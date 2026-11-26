@@ -211,10 +211,42 @@ export default function InventoryPage() {
             setIsSavingOrder(false)
         }
     }
-    const [filterStatus, setFilterStatus] = useState<InventoryFilterStatus>('all')
-    const [sortBy, setSortBy] = useState<InventorySortOption>('recent')
+   const [filterStatus, setFilterStatus] = useState<InventoryFilterStatus>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('pz_inv_filter_status') as InventoryFilterStatus | null
+            if (saved) return saved
+        }
+        return 'all'
+    })
+    const [sortBy, setSortBy] = useState<InventorySortOption>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('pz_inv_sort_by') as InventorySortOption | null
+            if (saved) return saved
+        }
+        return 'recent'
+    })
     const [isSortOpen, setIsSortOpen] = useState(false)
     const sortDropdownRef = useRef<HTMLDivElement>(null)
+    const [recentlyEditedProductId, setRecentlyEditedProductId] = useState<string | null>(null)
+
+    // Hidratar búsqueda guardada al montar
+    useEffect(() => {
+        const savedSearch = sessionStorage.getItem('pz_inv_search')
+        if (savedSearch) setSearch(savedSearch)
+    }, [])
+
+    // Sincronizar filtros, orden y búsqueda en sessionStorage para no perderlos al ir a editar un producto
+    useEffect(() => {
+        sessionStorage.setItem('pz_inv_filter_status', filterStatus)
+    }, [filterStatus])
+
+    useEffect(() => {
+        sessionStorage.setItem('pz_inv_sort_by', sortBy)
+    }, [sortBy])
+
+    useEffect(() => {
+        sessionStorage.setItem('pz_inv_search', search)
+    }, [search])
 
     const [pendingChanges, setPendingChanges] = useState<{ [key: string]: number | '' }>({})
     const [savingButtons, setSavingButtons] = useState<{ [key: string]: boolean }>({})
@@ -647,28 +679,107 @@ export default function InventoryPage() {
         return () => window.removeEventListener('resize', handleResize)
     }, [filteredItems])
 
-    // 3. SENSOR DE SCROLL VERTICAL PARA BOTÓN "VOLVER ARRIBA" (0 Re-renders durante el scroll)
+   // 3. SENSOR UNIVERSAL DE SCROLL VERTICAL (Fase de Captura: detecta scroll en window o en contenedores internos del Admin Layout)
     const [showScrollTop, setShowScrollTop] = useState(false)
+    const verticalScrollerRef = useRef<HTMLElement | Window | null>(null)
+    const lastKnownScrollTopRef = useRef<number>(0)
 
     useEffect(() => {
         let ticking = false
-        const handleWindowScroll = () => {
+
+        const handleAnyScroll = (e: Event) => {
+            const target = e.target
+            // Ignoramos los scrolls horizontales internos de la tabla y del riel de filtros
+            if (target === tableScrollRef.current || target === filterRailRef.current) return
+
             if (!ticking) {
                 window.requestAnimationFrame(() => {
-                    const shouldShow = window.scrollY > 450
+                    let currentY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0
+
+                    if (target && target !== document && target !== window && 'scrollTop' in (target as HTMLElement)) {
+                        const el = target as HTMLElement
+                        if (el.scrollTop > currentY) {
+                            currentY = el.scrollTop
+                            verticalScrollerRef.current = el
+                        }
+                    } else {
+                        verticalScrollerRef.current = window
+                    }
+
+                    lastKnownScrollTopRef.current = currentY
+                    const shouldShow = currentY > 240
                     setShowScrollTop(prev => (prev === shouldShow ? prev : shouldShow))
                     ticking = false
                 })
                 ticking = true
             }
         }
-        window.addEventListener('scroll', handleWindowScroll, { passive: true })
-        return () => window.removeEventListener('scroll', handleWindowScroll)
+
+        window.addEventListener('scroll', handleAnyScroll, { capture: true, passive: true })
+        return () => window.removeEventListener('scroll', handleAnyScroll, { capture: true })
     }, [])
 
     const scrollToTop = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' })
+        document.documentElement.scrollTo({ top: 0, behavior: 'smooth' })
+        if (verticalScrollerRef.current && verticalScrollerRef.current !== window && 'scrollTo' in verticalScrollerRef.current) {
+            (verticalScrollerRef.current as HTMLElement).scrollTo({ top: 0, behavior: 'smooth' })
+        }
     }
+
+    // 4. GUARDADO Y RESTAURACIÓN EXACTA DE POSICIÓN AL EDITAR UN PRODUCTO
+    const recordInventoryReturnPoint = (productId: string, rowId: string) => {
+        try {
+            sessionStorage.setItem('pz_inv_return_snapshot', JSON.stringify({
+                productId: String(productId),
+                rowId: String(rowId),
+                scrollTop: lastKnownScrollTopRef.current || window.scrollY || document.documentElement.scrollTop || 0,
+                timestamp: Date.now()
+            }))
+        } catch {}
+    }
+
+    const hasRestoredScrollRef = useRef(false)
+
+    useEffect(() => {
+        if (loading || items.length === 0 || hasRestoredScrollRef.current) return
+        hasRestoredScrollRef.current = true
+
+        const rawSnapshot = sessionStorage.getItem('pz_inv_return_snapshot')
+        if (!rawSnapshot) return
+
+        try {
+            const snapshot = JSON.parse(rawSnapshot)
+            sessionStorage.removeItem('pz_inv_return_snapshot')
+
+            // Solo restauramos si la edición ocurrió en los últimos 30 minutos
+            if (!snapshot.timestamp || Date.now() - snapshot.timestamp > 30 * 60 * 1000) return
+
+            setRecentlyEditedProductId(String(snapshot.productId))
+            setTimeout(() => {
+                setRecentlyEditedProductId(null)
+            }, 4000)
+
+            // Esperamos dos frames para garantizar que la tabla filtrada y sus alturas estén 100% pintadas en el DOM
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const targetRow =
+                        document.getElementById(`inv-row-${snapshot.rowId}`) ||
+                        document.querySelector(`[data-product-id="${snapshot.productId}"]`)
+
+                    if (targetRow) {
+                        targetRow.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'center' })
+                    } else if (typeof snapshot.scrollTop === 'number' && snapshot.scrollTop > 0) {
+                        // Fallback si el producto cambió de estado y salió del filtro actual: va a la misma altura para ver el siguiente producto
+                        window.scrollTo({ top: snapshot.scrollTop, behavior: 'instant' as ScrollBehavior })
+                        if (verticalScrollerRef.current && verticalScrollerRef.current !== window && 'scrollTo' in verticalScrollerRef.current) {
+                            (verticalScrollerRef.current as HTMLElement).scrollTo({ top: snapshot.scrollTop, behavior: 'instant' as ScrollBehavior })
+                        }
+                    }
+                })
+            })
+        } catch {}
+    }, [loading, items.length])
 
     return (
         <div className="min-h-screen bg-[#FAFAFC] pb-24 font-sans text-neutral-900 flex flex-col antialiased selection:bg-neutral-950 selection:text-white">
@@ -972,11 +1083,30 @@ export default function InventoryPage() {
                                                     statusText = 'Bajo'
                                                 }
 
+                                           const isRecentlyEdited = recentlyEditedProductId === String(item.productId)
+
                                                 return (
-                                                    <tr key={item.rowId} className="group hover:bg-neutral-50/40 transition-colors">
+                                                    <tr
+                                                        key={item.rowId}
+                                                        id={`inv-row-${item.rowId}`}
+                                                        data-product-id={item.productId}
+                                                        className={`group transition-colors duration-500 ${
+                                                            isRecentlyEdited
+                                                                ? 'bg-emerald-50/60 hover:bg-emerald-50/80'
+                                                                : 'hover:bg-neutral-50/40'
+                                                        }`}
+                                                    >
                                                         <td className="px-4 py-3 md:px-6 md:py-4 align-middle">
-                                                            <Link href={`/admin/product/edit/${item.productId}`} prefetch={false} className="flex items-center gap-3.5 group/portal active:scale-[0.98] transition-all duration-200 origin-left" title="Editar producto">
-                                                                <div className="w-10 h-10 md:w-11 md:h-11 rounded-lg bg-neutral-50 border border-neutral-200/50 overflow-hidden shrink-0 relative transition-colors group-hover/portal:border-neutral-300">
+                                                            <Link
+                                                                href={`/admin/product/edit/${item.productId}`}
+                                                                prefetch={false}
+                                                                onClick={() => recordInventoryReturnPoint(item.productId, item.rowId)}
+                                                                className="flex items-center gap-3.5 group/portal active:scale-[0.98] transition-all duration-200 origin-left"
+                                                                title="Editar producto"
+                                                            >
+                                                                <div className={`w-10 h-10 md:w-11 md:h-11 rounded-lg bg-neutral-50 border overflow-hidden shrink-0 relative transition-colors ${
+                                                                    isRecentlyEdited ? 'border-emerald-400 ring-2 ring-emerald-500/20' : 'border-neutral-200/50 group-hover/portal:border-neutral-300'
+                                                                }`}>
                                                                     {item.image ? (
                                                                         <Image
                                                                             src={getOptimizedUrl(item.image)}
@@ -992,6 +1122,11 @@ export default function InventoryPage() {
                                                                 <div className="min-w-0 flex-1 space-y-0.5">
                                                                     <div className="flex items-center gap-1.5">
                                                                         <p className="font-bold text-xs text-neutral-900 leading-tight truncate">{item.name}</p>
+                                                                        {isRecentlyEdited && (
+                                                                            <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-600 text-white animate-in fade-in">
+                                                                                Recién editado
+                                                                            </span>
+                                                                        )}
                                                                         <ArrowUpRight size={12} className="text-neutral-400 md:opacity-0 md:-translate-x-2 md:group-hover/portal:opacity-100 md:group-hover/portal:translate-x-0 transition-all duration-300 shrink-0" />
                                                                     </div>
                                                                     <div className="flex flex-wrap items-center gap-2 pt-0.5">
@@ -1245,13 +1380,19 @@ export default function InventoryPage() {
                                                             </button>
                                                         </td>
 
-                                                        {/* CELDA: ESTADO */}
+                                                      {/* CELDA: ESTADO */}
                                                         <td className="px-4 py-3 md:px-6 md:py-4 text-right align-middle">
                                                             <div className="flex justify-end items-center gap-3">
                                                                 <div className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-bold uppercase tracking-wider shrink-0 ${statusColor}`}>
                                                                     <StatusIcon size={10} strokeWidth={2.5} /> <span className="hidden sm:inline">{statusText}</span>
                                                                 </div>
-                                                                <Link href={`/admin/product/edit/${item.productId}`} prefetch={false} className="hidden md:flex text-neutral-400 hover:text-neutral-900 transition-colors bg-white border border-neutral-200/50 hover:bg-neutral-50 p-1.5 rounded-md shrink-0 shadow-xs" title="Editar producto completo">
+                                                                <Link
+                                                                    href={`/admin/product/edit/${item.productId}`}
+                                                                    prefetch={false}
+                                                                    onClick={() => recordInventoryReturnPoint(item.productId, item.rowId)}
+                                                                    className="hidden md:flex text-neutral-400 hover:text-neutral-900 transition-colors bg-white border border-neutral-200/50 hover:bg-neutral-50 p-1.5 rounded-md shrink-0 shadow-xs"
+                                                                    title="Editar producto completo"
+                                                                >
                                                                     <ArrowUpRight size={14} />
                                                                 </Link>
                                                             </div>
@@ -1546,7 +1687,7 @@ export default function InventoryPage() {
                 )}
           </AnimatePresence>
 
-            {/* 🚀 BOTÓN FLOTANTE DISCRETO: VOLVER ARRIBA (Aparece tras 450px de scroll vertical) */}
+          {/* 🚀 BOTÓN FLOTANTE DISCRETO: VOLVER ARRIBA (Detecta scroll en window o contenedores internos) */}
             <AnimatePresence>
                 {showScrollTop && !isReordering && !visibilityModalTarget && (
                     <motion.button
@@ -1558,9 +1699,9 @@ export default function InventoryPage() {
                         transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                         aria-label="Volver al principio"
                         title="Volver arriba"
-                        className="fixed bottom-6 right-5 md:bottom-8 md:right-8 z-40 w-10 h-10 rounded-full bg-neutral-950/90 hover:bg-black text-white backdrop-blur-md border border-white/15 shadow-[0_8px_24px_rgba(0,0,0,0.18)] flex items-center justify-center cursor-pointer active:scale-90 transition-colors"
+                        className="fixed bottom-6 right-5 md:bottom-8 md:right-8 z-[90] w-10 h-10 rounded-full bg-neutral-950 hover:bg-black text-white border border-white/15 shadow-[0_10px_28px_rgba(0,0,0,0.25)] flex items-center justify-center cursor-pointer active:scale-90 transition-colors"
                     >
-                        <ArrowUp size={16} strokeWidth={2.2} />
+                        <ArrowUp size={16} strokeWidth={2.4} />
                     </motion.button>
                 )}
             </AnimatePresence>
