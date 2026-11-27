@@ -1270,7 +1270,7 @@ function StoreHeader(props: StoreHeaderProps) {
                     <div className={`fixed top-0 left-0 right-0 z-40 bg-[var(--store-bg)]/80 backdrop-blur-md border-b-[length:var(--border-width-ui)] border-[var(--store-border)]/30 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
 
                         {/* Top Bar Elegante con Ticker Vertical */}
-                        <div className="bg-[var(--store-text-main)] text-[var(--store-bg)] px-4 md:px-8 py-1.5 flex justify-between items-center gap-4 text-[8px] md:text-[9px] uppercase tracking-[0.2em] font-bold">
+                        <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-4 md:px-8 py-1.5 flex justify-between items-center gap-4 text-[8px] md:text-[9px] uppercase tracking-[0.2em] font-bold">
                             <ClassicTrustTicker
                                 announcements={realAnnouncements}
                                 centered={false}
