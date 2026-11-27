@@ -31,8 +31,7 @@ interface DedicatedPromoClientProps {
   rates: any
   allPromotions: any[]
 }
-
-// Micro-reloj minimalista que utiliza variables de la tienda
+// Micro-reloj minimalista con matemática de horas, minutos y segundos corregida
 const MinimalCountdown = ({ expiresAt }: { expiresAt: string }) => {
   const [timeLeft, setTimeLeft] = useState('')
 
@@ -44,10 +43,10 @@ const MinimalCountdown = ({ expiresAt }: { expiresAt: string }) => {
         setTimeLeft('Expirado')
         return
       }
-      const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-      const m = Math.floor((diff % (1000 * 60)) / (1000 * 60))
-      const s = Math.floor((diff % 1000) / 1000)
-      setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
+      const totalHours = Math.floor(diff / (1000 * 60 * 60))
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const s = Math.floor((diff % (1000 * 60)) / 1000)
+      setTimeLeft(`${totalHours.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`)
     }
     calculate()
     const interval = setInterval(calculate, 1000)
@@ -124,14 +123,45 @@ export default function DedicatedPromoClient({
     return allPromotions.filter((p: any) => String(p.id) !== String(promo.id))
   }, [allPromotions, promo.id])
 
-  // Precios
+// Configuración fiscal para las tarjetas
+  const showTaxInCatalog = store?.show_tax_in_catalog === true && store?.fiscal_profile !== 'informal'
+  const taxPercentage = store?.default_tax_percentage || 16
+
+  // Precios sincronizados 1:1 con la campaña activa (promo)
   const getProductPricing = (product: any) => {
-    const cashPrice = Number(product.usd_cash_price || 0)
+    const rawCashPrice = Number(product.usd_cash_price || 0)
     const markup = Number(product.usd_penalty || 0)
-    const listPrice = cashPrice + markup
-    const priceInBs = listPrice * activeRate
-    const discountPercent = listPrice > 0 ? Math.round((markup / listPrice) * 100) : 0
-    return { cashPrice, priceInBs, discountPercent, hasDiscount: markup > 0 }
+    const rawListPrice = rawCashPrice + markup
+
+    const isPromoValid = Boolean(
+      promo?.is_active !== false &&
+      (!promo?.expires_at || new Date(promo.expires_at).getTime() > Date.now())
+    )
+
+    const promoDiscountPct =
+      isPromoValid && promo?.promo_type === 'percentage' && Number(promo?.discount_percentage) > 0
+        ? Number(promo.discount_percentage)
+        : 0
+
+    const bogoBadge =
+      isPromoValid && promo?.promo_type === 'bogo' && Number(promo?.bogo_buy) > 0
+        ? `${promo.bogo_buy}x${promo.bogo_pay}`
+        : null
+
+    const discountFactor = promoDiscountPct > 0 ? 1 - promoDiscountPct / 100 : 1
+    const cashPrice = rawCashPrice * discountFactor
+    const effectiveListPrice = rawListPrice * discountFactor
+    const priceInBs = effectiveListPrice * activeRate
+    const discountPercent = rawListPrice > 0 ? Math.round((markup / rawListPrice) * 100) : 0
+
+    return {
+      cashPrice,
+      priceInBs,
+      discountPercent,
+      hasDiscount: markup > 0,
+      promoDiscountPct,
+      bogoBadge
+    }
   }
 
   const handleOpenProduct = (product: any) => {
@@ -265,10 +295,17 @@ export default function DedicatedPromoClient({
               <p className="text-xs text-[var(--store-surface-text)]">Prueba con otro término de búsqueda.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 lg:gap-8">
+           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 lg:gap-8">
               {filteredProducts.map((product: any, idx: number) => {
                 const pricing = getProductPricing(product)
-                const isOutOfStock = (product.stock || 0) <= 0
+                const variantStockSum =
+                  Array.isArray(product.product_variants) && product.product_variants.length > 0
+                    ? product.product_variants.reduce((acc: number, v: any) => acc + (Number(v.stock) || 0), 0)
+                    : null
+                const totalStock = variantStockSum !== null ? variantStockSum : Number(product.stock || 0)
+                const isOutOfStock = totalStock <= 0
+                const isCritical = totalStock > 0 && totalStock <= 3
+
                 return (
                   <ProductCard
                     key={product.id}
@@ -276,9 +313,13 @@ export default function DedicatedPromoClient({
                     pricing={pricing}
                     onOpen={handleOpenProduct}
                     isOutOfStock={isOutOfStock}
+                    isCriticalStock={isCritical}
                     index={idx}
                     isFavorite={favoriteIds.has(String(product.id))}
+                    showTaxIndicator={showTaxInCatalog}
+                    taxPercentage={taxPercentage}
                     cardStyle={activeTheme.layout?.card_style || 'standard'}
+                    mediaConfig={activeTheme.layout?.card_media}
                   />
                 )
               })}
@@ -401,8 +442,9 @@ export default function DedicatedPromoClient({
         currency={isEur ? 'eur' : 'usd'}
         rates={{ usd: Number(rates?.usd_rate || 0), eur: Number(rates?.eur_rate || 0) }}
         promotions={allPromotions}
+        activePromoContext={promo}
         storeConfig={{ ...store, theme_config: activeTheme }}
-        isFavorite={false}
+        isFavorite={selectedProductForModal ? favoriteIds.has(String(selectedProductForModal.id)) : false}
       />
 
       <ProductFoodModal
