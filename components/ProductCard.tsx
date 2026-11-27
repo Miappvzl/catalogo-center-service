@@ -11,11 +11,13 @@ import { formatUSD, formatVES } from '@/utils/currency'; // 🚀 FORMATO HISPANO
 interface ProductCardProps {
   product: any;
   mediaConfig?: { ratio: string; fit: string; bg_color: string }; // 🚀 NUEVO: Image Engine
-  pricing: {
+pricing: {
     cashPrice: number;
     priceInBs: number;
     discountPercent: number;
     hasDiscount: boolean;
+    promoDiscountPct?: number;
+    bogoBadge?: string | null;
   };
   onOpen: (product: any) => void;
   isOutOfStock?: boolean;
@@ -59,14 +61,32 @@ function ProductCardComponent({
   const fitClass = isContain ? 'object-contain p-4 md:p-5' : 'object-cover'; // Breathing Room
   const imageBgStyle = isContain && mediaConfig?.bg_color ? { backgroundColor: mediaConfig.bg_color } : {};
 
- // Cálculos financieros protegidos
+ // Cálculos financieros protegidos (Sincronizados 1:1 con Campañas Promocionales Activas y Ofertas Individuales)
   const penalty = Number(product.usd_penalty || 0);
-  const cashPrice = Number(product.usd_cash_price || 0);
-  const listPrice = cashPrice + penalty;
-  const compareAt = Number(product.compare_at_usd || 0);
-  const activeCompareAt = compareAt > listPrice ? compareAt : listPrice;
-  const isPromo = activeCompareAt > listPrice;
-  const promoPercent = isPromo ? Math.round(((activeCompareAt - listPrice) / activeCompareAt) * 100) : 0;
+  const rawCashPrice = Number(product.usd_cash_price || 0);
+  const rawListPrice = rawCashPrice + penalty;
+  const rawCompareAt = Number(product.compare_at_usd || 0);
+
+  const promoDiscountPct = Number(pricing.promoDiscountPct || 0);
+  const hasCampaignDiscount = promoDiscountPct > 0;
+
+  // Si tiene descuento porcentual por campaña activa, se aplica sobre el precio de lista y el precio en divisas
+  const listPrice = hasCampaignDiscount
+    ? rawListPrice * (1 - promoDiscountPct / 100)
+    : rawListPrice;
+  const cashPrice = hasCampaignDiscount
+    ? rawCashPrice * (1 - promoDiscountPct / 100)
+    : rawCashPrice;
+
+  // Si hay campaña porcentual activa, el precio anterior tachado pasa a ser el precio de lista original ($16,00 -> $10,56)
+  const activeCompareAt = hasCampaignDiscount
+    ? rawListPrice
+    : (rawCompareAt > rawListPrice ? rawCompareAt : rawListPrice);
+
+  const isPromo = hasCampaignDiscount || activeCompareAt > listPrice;
+  const promoPercent = hasCampaignDiscount
+    ? Math.round(promoDiscountPct)
+    : (isPromo ? Math.round(((activeCompareAt - listPrice) / activeCompareAt) * 100) : 0);
 
   const isTaxable = !product.is_tax_exempt;
   const taxAmountUsd = isTaxable ? listPrice * (taxPercentage / 100) : 0;
@@ -891,9 +911,11 @@ function areProductCardPropsEqual(prev: ProductCardProps, next: ProductCardProps
     prev.mediaConfig?.fit === next.mediaConfig?.fit &&
     prev.mediaConfig?.bg_color === next.mediaConfig?.bg_color &&
     // Validamos pricing porque los padres suelen pasarlo como objeto literal
-    prev.pricing.priceInBs === next.pricing.priceInBs &&
+prev.pricing.priceInBs === next.pricing.priceInBs &&
     prev.pricing.cashPrice === next.pricing.cashPrice &&
-    prev.pricing.discountPercent === next.pricing.discountPercent
+    prev.pricing.discountPercent === next.pricing.discountPercent &&
+    prev.pricing.promoDiscountPct === next.pricing.promoDiscountPct &&
+    prev.pricing.bogoBadge === next.pricing.bogoBadge
   );
 }
 

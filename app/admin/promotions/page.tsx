@@ -175,9 +175,9 @@ export default function PromotionsPage() {
                             .select('*')
                             .eq('store_id', store.id)
                             .order('created_at', { ascending: false }),
-                        supabase
+                       supabase
                             .from('products')
-                            .select('id, name, image_url, usd_cash_price')
+                            .select('id, name, image_url, usd_cash_price, usd_penalty, compare_at_usd')
                             .eq('store_id', store.id)
                             .eq('status', 'active')
                             .order('name', { ascending: true })
@@ -785,9 +785,20 @@ export default function PromotionsPage() {
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
                                     {filteredProducts.slice(0, visibleCount).map(p => {
                                         const isSelected = currentPromo.linked_products?.includes(p.id);
+                                        const cashPrice = Number(p.usd_cash_price || 0);
+                                        const penalty = Number(p.usd_penalty || 0);
+                                        const listPrice = cashPrice + penalty;
+                                        const compareAt = Number(p.compare_at_usd || 0);
+                                        const hasIndividualOffer = compareAt > listPrice && listPrice > 0;
+
+                                        const pct = currentPromo.promo_type === 'percentage' ? Number(currentPromo.discount_percentage || 0) : 0;
+                                        const hasPctPreview = pct > 0 && pct < 100;
+                                        const previewCash = hasPctPreview ? cashPrice * (1 - pct / 100) : cashPrice;
+                                        const previewList = hasPctPreview ? listPrice * (1 - pct / 100) : listPrice;
+
                                         return (
                                             <div 
                                                 key={p.id} 
@@ -806,9 +817,33 @@ export default function PromotionsPage() {
                                                     )}
                                                 </div>
 
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-semibold text-xs truncate tracking-tight">{p.name}</p>
-                                                    <p className="font-mono text-[11px] text-neutral-400 mt-0.5">${Number(p.usd_cash_price).toFixed(2)}</p>
+                                                <div className="flex-1 min-w-0 space-y-0.5">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="font-semibold text-xs truncate tracking-tight">{p.name}</p>
+                                                    </div>
+
+                                                    {hasPctPreview ? (
+                                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px]">
+                                                            <span className="text-neutral-400 line-through">${listPrice.toFixed(2)}</span>
+                                                            <span className="font-bold text-rose-600">➔ ${previewList.toFixed(2)}</span>
+                                                            {penalty > 0 && (
+                                                                <span className="text-emerald-700 font-semibold">
+                                                                    (Divisa: ${previewCash.toFixed(2)})
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-wrap items-center gap-x-2 font-mono text-[10px] text-neutral-500">
+                                                            <span>Vitrina: <strong className="text-neutral-800">${listPrice.toFixed(2)}</strong></span>
+                                                            {penalty > 0 && <span>· Divisa: ${cashPrice.toFixed(2)}</span>}
+                                                        </div>
+                                                    )}
+
+                                                    {hasIndividualOffer && (
+                                                        <span className="inline-block text-[8.5px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200/60">
+                                                            Ya tiene tachado individual (${compareAt.toFixed(2)})
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0 border ${

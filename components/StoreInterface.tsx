@@ -1028,14 +1028,65 @@ export default function StoreInterface({ store: initialStore, products: initialP
     }
   }, [store?.store_type]);
 
+// 🚀 MAPA O(1) DE LA MEJOR CAMPAÑA ACTIVA POR PRODUCTO (Sincroniza el Catálogo con el Modal y el Carrito)
+  const productBestPromoMap = useMemo(() => {
+    const map = new Map<string, any>();
+    if (!displayPromotions || displayPromotions.length === 0) return map;
+
+    const getEffectiveDiscount = (p: any) =>
+      p.promo_type === 'percentage'
+        ? Number(p.discount_percentage || 0)
+        : p.promo_type === 'bogo' && Number(p.bogo_buy) > 0
+          ? ((Number(p.bogo_buy) - Number(p.bogo_pay)) / Number(p.bogo_buy)) * 100
+          : 0;
+
+    displayPromotions.forEach((promo: any) => {
+      if (!promo.is_active || !Array.isArray(promo.linked_products)) return;
+      const currentEff = getEffectiveDiscount(promo);
+
+      promo.linked_products.forEach((rawId: any) => {
+        const pid = String(rawId);
+        const existing = map.get(pid);
+        if (!existing || currentEff > getEffectiveDiscount(existing)) {
+          map.set(pid, promo);
+        }
+      });
+    });
+
+    return map;
+  }, [displayPromotions]);
+
   const getProductPricing = useCallback((product: any) => {
-    const cashPrice = Number(product.usd_cash_price || 0)
-    const markup = Number(product.usd_penalty || 0)
-    const listPrice = cashPrice + markup
-    const priceInBs = listPrice * activeRate
-    const discountPercent = listPrice > 0 ? Math.round((markup / listPrice) * 100) : 0
-    return { cashPrice, priceInBs, discountPercent, hasDiscount: markup > 0 }
-  }, [activeRate]);
+    const rawCashPrice = Number(product.usd_cash_price || 0);
+    const markup = Number(product.usd_penalty || 0);
+    const rawListPrice = rawCashPrice + markup;
+
+    const bestPromo = productBestPromoMap.get(String(product.id)) || null;
+    const promoDiscountPct =
+      bestPromo && bestPromo.promo_type === 'percentage' && Number(bestPromo.discount_percentage) > 0
+        ? Number(bestPromo.discount_percentage)
+        : 0;
+
+    const bogoBadge =
+      bestPromo && bestPromo.promo_type === 'bogo' && Number(bestPromo.bogo_buy) > 0
+        ? `${bestPromo.bogo_buy}x${bestPromo.bogo_pay}`
+        : null;
+
+    const discountFactor = promoDiscountPct > 0 ? 1 - promoDiscountPct / 100 : 1;
+    const cashPrice = rawCashPrice * discountFactor;
+    const effectiveListPrice = rawListPrice * discountFactor;
+    const priceInBs = effectiveListPrice * activeRate;
+    const discountPercent = rawListPrice > 0 ? Math.round((markup / rawListPrice) * 100) : 0;
+
+    return {
+      cashPrice,
+      priceInBs,
+      discountPercent,
+      hasDiscount: markup > 0,
+      promoDiscountPct,
+      bogoBadge
+    };
+  }, [activeRate, productBestPromoMap]);
 
   // 🚀 DETECCIÓN INFALIBLE V2: Superposición de estados (Base de Datos + Motor de Luminancia)
   const isStoreDark = useMemo(() => {
@@ -1196,10 +1247,12 @@ export default function StoreInterface({ store: initialStore, products: initialP
         />
       )
 
-      // Inyección In-Feed de Banners de Campaña en el 4to producto
+      // 🚀 CONMUTACIÓN INTELIGENTE: Solo inyectamos el banner en el 4to producto si la tienda TIENE colecciones activas.
+      // Si NO tiene colecciones activas, el banner ya se exhibe en posición protagonista justo debajo del Hero.
+      const hasActiveCollections = Boolean(collections && collections.length > 0)
       const injectAfterIndex = paginatedProducts.length < 4 ? paginatedProducts.length - 1 : 3
 
-      if (index === injectAfterIndex && displayPromotions && displayPromotions.length > 0) {
+      if (hasActiveCollections && index === injectAfterIndex && displayPromotions && displayPromotions.length > 0) {
         const hasMultiple = displayPromotions.length > 1
 
         return (
@@ -1252,8 +1305,7 @@ export default function StoreInterface({ store: initialStore, products: initialP
       }
       return productCard
     })
-  }, [paginatedProducts, displayPromotions, isBoutiqueMode, favoriteIds, showTaxInCatalog, taxPercentage, activeTheme, activeRate, store?.slug, router])
-
+  }, [paginatedProducts, displayPromotions, collections, isBoutiqueMode, favoriteIds, showTaxInCatalog, taxPercentage, activeTheme, activeRate, store?.slug, router, getProductPricing, handleOpenProduct])
   // ==========================================
   // 🎨 PINTADO PRINCIPAL DE LA TIENDA VIVA
   // ==========================================
@@ -1453,45 +1505,95 @@ export default function StoreInterface({ store: initialStore, products: initialP
             </div>
           )}
 
-        {/* 🚀 COLECCIONES DESTACADAS (COMPONENTE POLIMÓRFICO ARQUITECTÓNICO) */}
-          {collections && collections.length > 0 && !selectedCollectionData && !debouncedSearch && (
-            <section className="mb-14 animate-in fade-in">
-              <div className="flex items-end justify-between mb-5 px-1">
-                <div className="flex flex-col text-left">
-                  <h2 className={`text-xl md:text-2xl tracking-tight text-[var(--store-text-main)] ${activeTheme.template_id === 'hardware_dense' ? 'font-mono font-bold uppercase' : 'font-semibold'
-                    }`}>
-                    Colecciones Destacadas
-                  </h2>
+        {/* 🚀 POSICIÓN PROTAGONISTA POST-HERO: COLECCIONES ACTIVAS O BANNERS DE PROMOCIÓN */}
+          {collections && collections.length > 0 ? (
+            !selectedCollectionData && !debouncedSearch && (
+              <section className="mb-14 animate-in fade-in">
+                <div className="flex items-end justify-between mb-5 px-1">
+                  <div className="flex flex-col text-left">
+                    <h2 className={`text-xl md:text-2xl tracking-tight text-[var(--store-text-main)] ${activeTheme.template_id === 'hardware_dense' ? 'font-mono font-bold uppercase' : 'font-semibold'
+                      }`}>
+                      Colecciones Destacadas
+                    </h2>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 items-stretch">
-                {collections.map((col: any, idx: number) => (
-                  <CollectionCard
-                    key={col.id}
-                    index={idx}
-                    collection={col}
-                    products={products}
-                    themeConfig={activeTheme}
-                    onClick={() => {
-                      setActiveCollectionSlug(col.slug)
-                      setSelectedCategory('Todos')
-                      setCurrentPage(1)
-                      window.history.replaceState(null, '', `${pathname}?c=${col.slug}`)
+                <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-6 snap-x snap-mandatory scroll-px-4 md:scroll-px-8 items-stretch">
+                  {collections.map((col: any, idx: number) => (
+                    <CollectionCard
+                      key={col.id}
+                      index={idx}
+                      collection={col}
+                      products={products}
+                      themeConfig={activeTheme}
+                      onClick={() => {
+                        setActiveCollectionSlug(col.slug)
+                        setSelectedCategory('Todos')
+                        setCurrentPage(1)
+                        window.history.replaceState(null, '', `${pathname}?c=${col.slug}`)
 
-                      setTimeout(() => {
-                        const anchor = document.getElementById('collection-view-anchor') || catalogTopRef.current
-                        if (anchor) {
-                          const yOffset = -130
-                          const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
-                          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
-                        }
-                      }, 60)
-                    }}
-                  />
-                ))}
-              </div>
-            </section>
+                        setTimeout(() => {
+                          const anchor = document.getElementById('collection-view-anchor') || catalogTopRef.current
+                          if (anchor) {
+                            const yOffset = -130
+                            const y = anchor.getBoundingClientRect().top + window.scrollY + yOffset
+                            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+                          }
+                        }, 60)
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            )
+          ) : (
+            /* 💎 SI LA TIENDA NO TIENE COLECCIONES ACTIVAS: El Banner de Promociones sube justo debajo del Hero */
+            displayPromotions && displayPromotions.length > 0 && !selectedPromoData && !selectedCollectionData && !debouncedSearch && (
+              <section
+                className="mb-10 md:mb-12 w-full overflow-hidden min-w-0 animate-in fade-in duration-500"
+                onMouseEnter={() => { isCarouselPausedRef.current = true }}
+                onMouseLeave={() => { isCarouselPausedRef.current = false }}
+                onTouchStart={() => { isCarouselPausedRef.current = true }}
+                onTouchEnd={() => { isCarouselPausedRef.current = false }}
+              >
+                <div
+                  ref={carouselRef}
+                  className="flex items-stretch overflow-x-auto snap-x snap-mandatory no-scrollbar w-full gap-3.5 sm:gap-4"
+                  style={{ scrollBehavior: 'smooth' }}
+                >
+                  {displayPromotions.map((promo: any) => {
+                    const hasMultiple = displayPromotions.length > 1
+                    return (
+                      <div
+                        key={`hero-promo-${promo.id}`}
+                        className={`shrink-0 snap-start flex flex-col transition-all ${
+                          hasMultiple
+                            ? 'w-[88%] sm:w-[90%] md:w-[92%] lg:w-[94%]'
+                            : 'w-full'
+                        }`}
+                      >
+                        <PromotionBanner
+                          promo={promo}
+                          themeConfig={activeTheme}
+                          isActive={false}
+                          onToggle={() => {
+                            const isSubdomain = typeof window !== 'undefined' &&
+                              (window.location.host.startsWith(`${store.slug}.`) ||
+                                (window.location.host.includes('.') && !window.location.host.startsWith('www.')))
+
+                            const targetUrl = isSubdomain
+                              ? `/promo/${promo.id}`
+                              : `/${store.slug}/promo/${promo.id}`
+
+                            router.push(targetUrl)
+                          }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )
           )}
 
           {/* 🚀 ESCAPARATE EDITORIAL (Lo más vendido - Agnóstico) */}

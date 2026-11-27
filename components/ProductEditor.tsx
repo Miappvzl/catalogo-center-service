@@ -298,7 +298,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
     const [existingCategories, setExistingCategories] = useState<string[]>([])
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
     const categoryDropdownRef = useRef<HTMLDivElement>(null)
-        const [storeSlug, setStoreSlug] = useState<string>('');
+    const [storeSlug, setStoreSlug] = useState<string>('');
     const [copiedMagicLink, setCopiedMagicLink] = useState(false);
 
     useEffect(() => {
@@ -476,7 +476,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
 
 
 
- // 💎 SANEAMIENTO AUTOMÁTICO: Si el usuario vacía el input o pone 0, se resetea a null para que herede
+    // 💎 SANEAMIENTO AUTOMÁTICO: Si el usuario vacía el input o pone 0, se resetea a null para que herede
     const updateVariantOverride = (id: string, field: string, value: any) => {
         let sanitizedValue = value;
         if (field.startsWith('override_')) {
@@ -553,16 +553,131 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         }
     };
 
-  const math = useMemo(() => {
+// 🚀 DETECTOR DE CAMPAÑAS PROMOCIONALES ACTIVAS VINCULADAS A ESTE PRODUCTO
+    const [linkedActivePromos, setLinkedActivePromos] = useState<any[]>([])
+    const [isUnlinkingPromo, setIsUnlinkingPromo] = useState(false)
+
+    useEffect(() => {
+        if (!productId || !storeSettings?.id) return
+        const fetchLinkedPromos = async () => {
+            const { data } = await supabase
+                .from('promotions')
+                .select('id, title, promo_type, discount_percentage, bogo_buy, bogo_pay, is_active, expires_at, linked_products')
+                .eq('store_id', storeSettings.id)
+                .eq('is_active', true)
+
+            if (data) {
+                const nowMs = Date.now()
+                const matching = data.filter((p: any) => {
+                    if (p.expires_at && new Date(p.expires_at).getTime() <= nowMs) return false
+                    return Array.isArray(p.linked_products) && p.linked_products.some((id: any) => String(id) === String(productId))
+                })
+                setLinkedActivePromos(matching)
+            }
+        }
+        fetchLinkedPromos()
+    }, [productId, storeSettings?.id, supabase])
+
+    const bestActiveCampaign = useMemo(() => {
+        if (linkedActivePromos.length === 0) return null
+        const getEff = (p: any) =>
+            p.promo_type === 'percentage'
+                ? Number(p.discount_percentage || 0)
+                : p.promo_type === 'bogo' && Number(p.bogo_buy) > 0
+                  ? ((Number(p.bogo_buy) - Number(p.bogo_pay)) / Number(p.bogo_buy)) * 100
+                  : 0
+        return linkedActivePromos.reduce((best, curr) => (getEff(curr) > getEff(best) ? curr : best), linkedActivePromos[0])
+    }, [linkedActivePromos])
+
+    const handleUnlinkFromCampaign = async (promoToUnlink: any) => {
+        if (!productId || !promoToUnlink?.id) return
+        setIsUnlinkingPromo(true)
+        try {
+            const updatedLinked = (promoToUnlink.linked_products || []).filter((id: any) => String(id) !== String(productId))
+            const { error } = await supabase
+                .from('promotions')
+                .update({ linked_products: updatedLinked })
+                .eq('id', promoToUnlink.id)
+
+            if (error) throw error
+
+            setLinkedActivePromos(prev => prev.filter(p => p.id !== promoToUnlink.id))
+            await revalidateStoreCache(storeSlug, storeSettings?.id)
+
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2200,
+                customClass: { popup: 'bg-neutral-900 text-white rounded-xl text-xs font-semibold border border-neutral-800' }
+            })
+            Toast.fire({ icon: 'success', title: `Excluido de "${promoToUnlink.title}"` })
+        } catch {
+            Swal.fire({ title: 'Error', text: 'No se pudo desvincular de la campaña.', icon: 'error', confirmButtonColor: '#171717' })
+        } finally {
+            setIsUnlinkingPromo(false)
+        }
+    }
+
+    const math = useMemo(() => {
         const cashPrice = Number(formData.price) || 0
         const markup = Number(formData.penalty) || 0
-        const listPrice = cashPrice + markup
-        const discountPercent = listPrice > 0 ? Math.round((markup / listPrice) * 100) : 0
-        const refBs = listPrice * activeRate
-        return { listPrice, discountPercent, refBs }
-    }, [formData.price, formData.penalty, activeRate])
+        const listPrice = Number((cashPrice + markup).toFixed(2))
+        const rawCompareAt = Number(formData.compareAt) || 0
 
-  // 🛡️ MEMORIA DE PRECIO BASE ORIGINAL (Para saber si el usuario lo modificó en esta sesión)
+        const isCompareAtValid = rawCompareAt > listPrice && listPrice > 0
+        const isCompareAtInvalid = rawCompareAt > 0 && rawCompareAt <= listPrice
+
+        const suggestedCompareAt = rawCompareAt > cashPrice && markup > 0
+            ? Number((rawCompareAt + markup).toFixed(2))
+            : Number((listPrice * 1.15).toFixed(2))
+
+        // Impacto si el producto está dentro de una Campaña Porcentual Activa
+        const campaignDiscountPct =
+            bestActiveCampaign && bestActiveCampaign.promo_type === 'percentage' && Number(bestActiveCampaign.discount_percentage) > 0
+                ? Number(bestActiveCampaign.discount_percentage)
+                : 0
+
+        const hasCampaignOverride = campaignDiscountPct > 0
+        const finalStoreListPrice = hasCampaignOverride
+            ? Number((listPrice * (1 - campaignDiscountPct / 100)).toFixed(2))
+            : listPrice
+        const finalStoreCashPrice = hasCampaignOverride
+            ? Number((cashPrice * (1 - campaignDiscountPct / 100)).toFixed(2))
+            : cashPrice
+        const finalStoreCompareAt = hasCampaignOverride
+            ? listPrice
+            : (isCompareAtValid ? rawCompareAt : 0)
+
+        const promoDiscountPercent = hasCampaignOverride
+            ? Math.round(campaignDiscountPct)
+            : (isCompareAtValid ? Math.round(((rawCompareAt - listPrice) / rawCompareAt) * 100) : 0)
+
+        const effectiveFxSavings = Number((finalStoreListPrice - finalStoreCashPrice).toFixed(2))
+        const discountPercent = finalStoreListPrice > 0 ? Math.round((effectiveFxSavings / finalStoreListPrice) * 100) : 0
+        const refBs = finalStoreListPrice * activeRate
+
+        return {
+            cashPrice,
+            markup,
+            listPrice,
+            rawCompareAt,
+            isCompareAtValid,
+            isCompareAtInvalid,
+            suggestedCompareAt,
+            hasCampaignOverride,
+            campaignDiscountPct,
+            finalStoreListPrice,
+            finalStoreCashPrice,
+            finalStoreCompareAt,
+            effectiveFxSavings,
+            promoDiscountPercent,
+            discountPercent,
+            refBs
+        }
+    }, [formData.price, formData.penalty, formData.compareAt, activeRate, bestActiveCampaign])
+
+    // 🛡️ MEMORIA DE PRECIO BASE ORIGINAL (Para saber si el usuario lo modificó en esta sesión)
     const initialBasePriceRef = useRef<number | null>(null);
 
     // Solo cuenta como precio propio si es estrictamente un número mayor a 0
@@ -630,7 +745,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     router.push('/admin/inventory')
                     return
                 }
-            // 🚀 Memorizamos el precio base original para el centinela reactivo
+                // 🚀 Memorizamos el precio base original para el centinela reactivo
                 initialBasePriceRef.current = Number(product.usd_cash_price || 0);
 
                 setFormData({
@@ -801,7 +916,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         updateVariantInput('images', newImages)
     }
 
-   const addVariantGroup = () => {
+    const addVariantGroup = () => {
         if (sizeInputValue.trim() !== '') addSizeFromInput()
 
         const rawTags = sizeInputValue.trim() !== '' && !sizeTags.includes(sizeInputValue.trim().toUpperCase())
@@ -898,7 +1013,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             if (varError) throw varError;
             const { error: prodError } = await supabase.from('products').delete().eq('id', productId);
             if (prodError) throw prodError;
-await revalidateStoreCache(storeSlug, storeSettings?.id)
+            await revalidateStoreCache(storeSlug, storeSettings?.id)
 
             setIsDirty(false);
             Swal.fire({ title: 'Eliminado', text: 'El producto se ha removido de su inventario.', icon: 'success', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } });
@@ -913,17 +1028,42 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
 
     const handleSave = async () => {
         if (hasVariants && sizeInputValue.trim() !== '') addSizeFromInput()
-       if (!formData.name) return Swal.fire({ title: 'Falta información', text: 'El producto debe tener un nombre descriptivo.', icon: 'warning', confirmButtonColor: '#171717' });
-    
+        if (!formData.name) return Swal.fire({ title: 'Falta información', text: 'El producto debe tener un nombre descriptivo.', icon: 'warning', confirmButtonColor: '#171717' });
+
         const priceNum = Number(formData.price);
         if (String(formData.price).trim() === '' || isNaN(priceNum) || priceNum < 0) {
-            return Swal.fire({ 
-                title: 'Precio Inválido', 
-                text: 'El valor monetario del producto no puede ser negativo.', 
-                icon: 'warning', 
+            return Swal.fire({
+                title: 'Precio Inválido',
+                text: 'El valor monetario del producto no puede ser negativo.',
+                icon: 'warning',
                 confirmButtonColor: '#171717',
                 customClass: { popup: 'rounded-xl font-sans text-xs' }
             });
+        }
+
+        // 🛡️ GUARDIÁN DE PRECIO TACHADO: Previene guardar una oferta invisible cuando compareAt <= Precio Base + Margen
+        let resolvedCompareAt: number | null = formData.compareAt !== '' ? Number(formData.compareAt) : null;
+
+        if (math.isCompareAtInvalid && !mission) {
+            const confirmFix = await Swal.fire({
+                title: 'Precio Tachado menor al Precio en Vitrina',
+                html: `Tu producto se muestra en la tienda a <b>$${math.listPrice.toFixed(2)}</b> ($${math.cashPrice.toFixed(2)} base + $${math.markup.toFixed(2)} de margen).<br><br>Como el Precio Anterior Tachado (<b>$${math.rawCompareAt.toFixed(2)}</b>) es menor o igual a <b>$${math.listPrice.toFixed(2)}</b>, el descuento no se verá en la tienda.<br><br>¿Deseas ajustarlo automáticamente a <b>$${math.suggestedCompareAt.toFixed(2)}</b> (sumándole el margen) para que la oferta sea visible?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#0a0a0a',
+                cancelButtonColor: '#737373',
+                confirmButtonText: `Sí, ajustar a $${math.suggestedCompareAt.toFixed(2)} y Guardar`,
+                cancelButtonText: 'Volver a revisar',
+                customClass: {
+                    popup: 'rounded-2xl font-sans text-xs p-6 shadow-xl border border-neutral-200/60',
+                    confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5 bg-neutral-950 text-white',
+                    cancelButton: 'rounded-xl text-xs font-bold px-4 py-2.5 bg-neutral-100 text-neutral-700 border border-neutral-200'
+                }
+            });
+
+            if (!confirmFix.isConfirmed) return;
+            resolvedCompareAt = math.suggestedCompareAt;
+            updateForm('compareAt', math.suggestedCompareAt);
         }
 
         setSaving(true)
@@ -942,7 +1082,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                 gallery: productGallery,
                 usd_cash_price: Number(formData.price) || 0,
                 usd_penalty: Number(formData.penalty) || 0,
-                compare_at_usd: formData.compareAt !== '' ? Number(formData.compareAt) : null,
+                compare_at_usd: resolvedCompareAt,
                 status: formData.status,
                 user_id: user.id,
                 store_id: storeSettings!.id,
@@ -1076,6 +1216,18 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                         if (toInsert.length > 0) await supabase.from('product_variants').insert(toInsert)
                         if (toUpdate.length > 0) await supabase.from('product_variants').upsert(toUpdate)
                     }
+
+                    // 🚀 CALIBRACIÓN LOGÍSTICA MULTIMODAL NON-BLOCKING (TrueWeight™ AI - Gemini 2.5 Flash)
+                    // Analiza en segundo plano la foto (image_url) + título + variantes sin retrasar el guardado
+                    fetch('/api/ai/logistics-enricher', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        keepalive: true,
+                        body: JSON.stringify({
+                            storeId: storeSettings!.id,
+                            productIds: [Number(currentId)],
+                        }),
+                    }).catch(() => { });
                 }
             }
             if (isMission1 || isMission2 || isMission3 || isMission4) {
@@ -1096,7 +1248,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
 
                 await supabase.from('stores').update({ onboarding_missions: missionPayload }).eq('id', storeSettings!.id);
 
-         // 🚀 Purgar caché de servidor con tags
+                // 🚀 Purgar caché de servidor con tags
                 await revalidateAdminDashboard();
                 await revalidateStoreCache(storeSlug, storeSettings?.id);
 
@@ -1115,7 +1267,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                 router.push('/admin');
                 return;
             }
-       await revalidateStoreCache(storeSlug, storeSettings?.id)
+            await revalidateStoreCache(storeSlug, storeSettings?.id)
 
             setIsDirty(false)
             Swal.fire({ title: '¡Guardado con éxito!', icon: 'success', confirmButtonColor: '#171717', customClass: { popup: 'rounded-xl font-sans text-xs' } })
@@ -1620,10 +1772,12 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                             <DollarSign size={16} className="text-neutral-500" />
                             <span>3. Configuración de Precios</span>
                         </h3>
-                        <p className="text-xs text-neutral-600 font-medium mt-1">Establezca los valores comerciales y los impuestos aplicables al producto.</p>
+                        <p className="text-xs text-neutral-600 font-medium mt-1">
+                            El precio público en vitrina es la suma del <b>Precio Divisa (Base)</b> más el <b>Margen Conversión</b>. Para mostrar una oferta, el <b>Precio Anterior (Tachado)</b> debe superar ese total.
+                        </p>
                     </div>
 
-                    {/* GRILLA DE PRECIOS CON VISIBILIDAD DUAL */}
+                    {/* GRILLA DE PRECIOS EN ORDEN MATEMÁTICO REAL: 1. BASE + 2. MARGEN -> 3. TACHADO */}
                     <div
                         id="tour-step-3-pricing-grid"
                         className={`grid grid-cols-1 sm:grid-cols-3 gap-5 scroll-mt-28 md:scroll-mt-32 p-2.5 rounded-xl transition-all ${currentTargetId === 'tour-step-3-pricing-grid'
@@ -1631,32 +1785,133 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                             : ''
                             }`}
                     >
+                        {/* 1. PRECIO DIVISA (BASE) */}
                         <div id="tour-step-1-price" className={`p-2.5 -m-2.5 rounded-xl ${currentTargetId === 'tour-step-1-price' ? getUniversalSpotlightClass('tour-step-1-price') : ''}`}>
-                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Precio Divisa (Base) *</label>
+                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">
+                                1. Precio Divisa (Base) *
+                            </label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
                                 <NumberInput min="0" value={formData.price} onChangeValue={(val) => updateForm('price', val)} placeholder="0.00" className="w-full bg-neutral-50/50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-center" />
                             </div>
+                            <span className="text-[10px] text-neutral-400 font-medium mt-1 block">
+                                Lo que cobras si pagan en divisas
+                            </span>
                         </div>
 
-                        <div id="tour-step-3-compare-at" className="p-2.5 -m-2.5 rounded-xl">
-                            <label className="text-[11px] font-bold text-rose-700 uppercase tracking-wider mb-1.5 block">Precio Anterior (Tachado)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs font-mono">$</span>
-                                <NumberInput min="0" value={formData.compareAt} onChangeValue={(val) => updateForm('compareAt', val)} placeholder="60.00" className="w-full placeholder:text-rose-400 text-rose-700 bg-rose-50/30 border border-rose-200/70 focus:bg-white focus:border-rose-400 rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold outline-none transition-all font-mono text-center" />
-                            </div>
-                        </div>
-
-                      <div id="tour-step-4-penalty" className={`p-2.5 -m-2.5 rounded-xl ${currentTargetId === 'tour-step-4-penalty' ? getUniversalSpotlightClass('tour-step-4-penalty') : ''}`}>
-                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">Margen Conversión (Opcional)</label>
+                        {/* 2. MARGEN CONVERSIÓN (OPCIONAL) */}
+                        <div id="tour-step-4-penalty" className={`p-2.5 -m-2.5 rounded-xl ${currentTargetId === 'tour-step-4-penalty' ? getUniversalSpotlightClass('tour-step-4-penalty') : ''}`}>
+                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">
+                                2. Margen Conversión (Opcional)
+                            </label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
                                 <NumberInput min="0" value={formData.penalty} onChangeValue={(val) => updateForm('penalty', val)} placeholder="0.00" className="w-full bg-neutral-50/50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-center" />
                             </div>
+                            <span className="text-[10px] text-neutral-400 font-medium mt-1 block">
+                                Se suma al precio en Bs (Total: <b className="text-neutral-700 font-mono">${math.listPrice.toFixed(2)}</b>)
+                            </span>
+                        </div>
+
+                        {/* 3. PRECIO ANTERIOR (TACHADO) */}
+                        <div id="tour-step-3-compare-at" className="p-2.5 -m-2.5 rounded-xl">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-[11px] font-bold text-rose-700 uppercase tracking-wider block">
+                                    3. Precio Anterior (Tachado)
+                                </label>
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs font-mono">$</span>
+                                <NumberInput
+                                    min="0"
+                                    value={formData.compareAt}
+                                    onChangeValue={(val) => updateForm('compareAt', val)}
+                                    placeholder={math.listPrice > 0 ? `${math.suggestedCompareAt.toFixed(2)}` : '60.00'}
+                                    className={`w-full placeholder:text-rose-300 text-rose-700 bg-rose-50/30 border rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold outline-none transition-all font-mono text-center focus:bg-white ${math.isCompareAtInvalid
+                                            ? 'border-amber-400 ring-2 ring-amber-400/20'
+                                            : 'border-rose-200/70 focus:border-rose-400'
+                                        }`}
+                                />
+                            </div>
+                            <span className="text-[10px] text-neutral-400 font-medium mt-1 block">
+                                {math.listPrice > 0
+                                    ? <>Debe ser mayor a <b className="text-rose-700 font-mono">${math.listPrice.toFixed(2)}</b></>
+                                    : 'Opcional · Para mostrar oferta'}
+                            </span>
                         </div>
                     </div>
+{/* 🏷️ DETECTOR DE CAMPAÑA ACTIVA VINCULADA: Avisa si una campaña de PromotionsPage está aplicando descuento sobre este producto */}
+                    {bestActiveCampaign && (
+                        <div className="p-4 bg-neutral-950 text-white border border-neutral-800 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 animate-in fade-in duration-200">
+                            <div className="flex items-start gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Percent size={15} />
+                                </div>
+                                <div className="space-y-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="text-xs font-bold text-white leading-tight">
+                                            Vinculado a campaña activa: &quot;{bestActiveCampaign.title}&quot;
+                                        </p>
+                                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[9px] font-bold uppercase tracking-wider">
+                                            {bestActiveCampaign.promo_type === 'percentage'
+                                                ? `-${bestActiveCampaign.discount_percentage}% en Tienda`
+                                                : bestActiveCampaign.promo_type === 'bogo'
+                                                  ? `${bestActiveCampaign.bogo_buy}x${bestActiveCampaign.bogo_pay}`
+                                                  : 'Banner Visual'}
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-neutral-300 font-normal leading-relaxed">
+                                        {math.hasCampaignOverride ? (
+                                            <>
+                                                Esta campaña aplica un <b className="text-white">-{math.campaignDiscountPct}%</b> automático sobre tus precios de arriba (quedando en <b className="text-emerald-400 font-mono">${math.finalStoreListPrice.toFixed(2)}</b> en vitrina y <b className="text-emerald-400 font-mono">${math.finalStoreCashPrice.toFixed(2)}</b> en divisas) y reemplaza cualquier Precio Anterior Tachado individual mientras la campaña esté activa.
+                                            </>
+                                        ) : (
+                                            <>Este artículo forma parte de la campaña activa &quot;{bestActiveCampaign.title}&quot;.</>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
 
-                         {/* 🛡️ BANNER REACTIVO: Solo aparece si el usuario modificó el precio base Y hay variantes con precio propio */}
+                            <button
+                                type="button"
+                                disabled={isUnlinkingPromo}
+                                onClick={() => handleUnlinkFromCampaign(bestActiveCampaign)}
+                                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer disabled:opacity-50"
+                            >
+                                {isUnlinkingPromo ? 'Excluyendo...' : 'Excluir de esta campaña'}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* 🚨 ASISTENTE INTELIGENTE EN VIVO: Si el Precio Tachado es menor o igual a Base + Margen */}
+                    {math.isCompareAtInvalid && !math.hasCampaignOverride && (
+                        <div className="p-4 bg-amber-50/90 border border-amber-300/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 animate-in fade-in duration-200">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                    <p className="text-xs font-bold text-amber-950 leading-tight">
+                                        El descuento no se mostrará en la tienda porque ${math.rawCompareAt.toFixed(2)} es menor al precio en vitrina (${math.listPrice.toFixed(2)})
+                                    </p>
+                                    <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+                                        Tu producto se muestra al público en <b className="font-mono text-amber-950">${math.listPrice.toFixed(2)}</b> (${math.cashPrice.toFixed(2)} base + ${math.markup.toFixed(2)} de margen).
+                                        {math.rawCompareAt > math.cashPrice && math.markup > 0
+                                            ? <> Si antes costaba <b className="font-mono">${math.rawCompareAt.toFixed(2)}</b> en divisas, sumándole el margen de <b className="font-mono">${math.markup.toFixed(2)}</b> su precio anterior tachado debe ser <b className="font-mono text-amber-950">${math.suggestedCompareAt.toFixed(2)}</b>.</>
+                                            : <> Para activar la oferta, coloca un precio anterior superior a <b className="font-mono text-amber-950">${math.listPrice.toFixed(2)}</b>.</>}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => updateForm('compareAt', math.suggestedCompareAt)}
+                                className="px-3.5 py-2 bg-neutral-950 hover:bg-black text-white rounded-xl text-[11px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 shadow-xs cursor-pointer"
+                            >
+                                Ajustar tachado a ${math.suggestedCompareAt.toFixed(2)}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* 🛡️ BANNER REACTIVO: Solo aparece si el usuario modificó el precio base Y hay variantes con precio propio */}
                     {isBasePriceModified && variantsWithCustomPrice.length > 0 && (
                         <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
                             <div className="flex items-start gap-2.5 min-w-0">
@@ -1706,29 +1961,116 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                     )}
                 </div>
 
-                {/* TARJETA NEGRA DE PULSO CAMBIARIO */}
+                {/* 💎 TARJETA NEGRA REDISEÑADA: ESPEJO 100% FIEL (INCLUYE CAMPAÑAS ACTIVAS SI APLICAN) */}
                 <div id="tour-step-4-card" className={`p-2.5 -m-2.5 rounded-xl scroll-mt-28 md:scroll-mt-32 ${getUniversalSpotlightClass('tour-step-4-card')}`}>
-                    <div className="bg-neutral-950 text-white rounded-xl p-6 text-center relative overflow-hidden border border-neutral-800 shadow-md">
-                        <div className="relative z-10 flex flex-col items-center gap-2.5">
-                            <span className="bg-white/10 text-white px-3 py-1 rounded text-[10px] font-mono font-bold tracking-wider border border-white/20">
-                                {rateLabel}: {activeRate.toFixed(2)} Bs.
-                            </span>
-                            {math.discountPercent > 0 && (
-                                <div className="bg-white text-neutral-950 px-3.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm">
-                                    Incentivo Divisa: -{math.discountPercent}%
-                                </div>
-                            )}
-                            <div className="w-full border-t border-neutral-800 pt-4 mt-1 space-y-1">
-                                <p className="text-neutral-300 text-[11px] font-bold uppercase tracking-wider">Referencia de cara al público</p>
-                                <p className="font-bold text-3xl md:text-4xl text-white tracking-tight leading-none font-mono">
-                                    Bs {math.refBs.toLocaleString('es-VE', { maximumFractionDigits: 2 })}
-                                </p>
-                                <p className="text-xs text-neutral-300 font-mono font-medium mt-1">Equivalente a un total de ${math.listPrice.toFixed(2)} USD</p>
+                    <div className="bg-neutral-950 text-white rounded-2xl border border-neutral-800/90 shadow-lg overflow-hidden">
+                        {/* Barra Superior de Telemetría */}
+                        <div className="px-5 py-3.5 bg-white/[0.03] border-b border-neutral-800/80 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-neutral-300">
+                                    Así se verá reflejado en tu tienda
+                                </span>
+                                {math.hasCampaignOverride && bestActiveCampaign && (
+                                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        Con Campaña: {bestActiveCampaign.title} (-{math.campaignDiscountPct}%)
+                                    </span>
+                                )}
                             </div>
+                            <span className="text-[10px] font-mono font-bold text-neutral-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10 tabular-nums">
+                                {rateLabel}: Bs. {activeRate.toFixed(2)}
+                            </span>
+                        </div>
+
+                        {/* Cuerpo Dividido en 2 Columnas */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-neutral-800/80">
+
+                            {/* Columna 1: Precio Público en Vitrina */}
+                            <div className="p-5 md:p-6 flex flex-col justify-between space-y-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                                        1. Precio Público en Vitrina
+                                    </span>
+                                    {math.promoDiscountPercent > 0 && (
+                                        <span className="px-2 py-0.5 rounded bg-rose-500 text-white font-mono text-[10px] font-black uppercase tracking-wider">
+                                            -{math.promoDiscountPercent}% OFF
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="space-y-1">
+                                    {math.finalStoreCompareAt > math.finalStoreListPrice && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-mono font-semibold text-neutral-500 line-through tabular-nums">
+                                                ${math.finalStoreCompareAt.toFixed(2)}
+                                            </span>
+                                            <span className="text-[10px] font-mono text-rose-400">
+                                                {math.hasCampaignOverride ? '(Precio de lista sin campaña)' : '(Precio anterior tachado)'}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-baseline gap-2.5 flex-wrap">
+                                        <span className="text-3xl md:text-4xl font-black font-mono tracking-tight text-white tabular-nums leading-none">
+                                            ${math.finalStoreListPrice.toFixed(2)}
+                                        </span>
+                                        <span className="text-sm font-mono font-bold text-neutral-400 tabular-nums">
+                                            Bs. {math.refBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <p className="text-[11px] font-mono text-neutral-400 pt-1 border-t border-neutral-800/60">
+                                    {math.hasCampaignOverride
+                                        ? `Cálculo: ($${math.cashPrice.toFixed(2)} Base + $${math.markup.toFixed(2)} Margen = $${math.listPrice.toFixed(2)}) − ${math.campaignDiscountPct}% Campaña = $${math.finalStoreListPrice.toFixed(2)}`
+                                        : math.markup > 0
+                                          ? `Fórmula: $${math.cashPrice.toFixed(2)} (Base) + $${math.markup.toFixed(2)} (Margen) = $${math.listPrice.toFixed(2)}`
+                                          : `Precio único sin margen de conversión adicional ($${math.cashPrice.toFixed(2)})`}
+                                </p>
+                            </div>
+
+                            {/* Columna 2: Etiqueta de Pago en Divisas */}
+                            <div className="p-5 md:p-6 flex flex-col justify-between space-y-3 bg-white/[0.01]">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                                        2. Etiqueta de Pago en Divisas
+                                    </span>
+                                    {math.effectiveFxSavings > 0 && (
+                                        <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono text-[10px] font-bold uppercase tracking-wider">
+                                            Ahorra ${math.effectiveFxSavings.toFixed(2)} (-{math.discountPercent}%)
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div>
+                                    {math.markup > 0 ? (
+                                        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                                            <span className="text-sm md:text-base font-mono font-bold">
+                                                En divisas: <strong className="text-white font-black">${math.finalStoreCashPrice.toFixed(2)}</strong>
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-neutral-300">
+                                            <span className="text-xs font-mono font-semibold">
+                                                Sin etiqueta de descuento en divisas (Margen = $0.00)
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <p className="text-[11px] text-neutral-400 leading-snug pt-1 border-t border-neutral-800/60">
+                                    {math.markup > 0
+                                        ? math.hasCampaignOverride
+                                            ? `En divisas el precio base ($${math.cashPrice.toFixed(2)}) también recibe el -${math.campaignDiscountPct}% de la campaña, quedando en $${math.finalStoreCashPrice.toFixed(2)}.`
+                                            : `Si el cliente paga en Zelle, Efectivo o Binance, el sistema le descuenta los $${math.markup.toFixed(2)} de margen y paga exactamente $${math.cashPrice.toFixed(2)}.`
+                                        : 'Agrega un Margen de Conversión arriba si deseas incentivar pagos en divisas.'}
+                                </p>
+                            </div>
+
                         </div>
                     </div>
                 </div>
-
                 {/* REGLA MAYORISTA INDIVIDUAL */}
                 {storeSettings?.storeType !== 'restaurant' && (
                     <div id="tour-step-3-wholesale" className={`p-2.5 -m-2.5 rounded-xl mb-2 mt-2 ${getUniversalSpotlightClass('tour-step-3-wholesale')}`}>
@@ -1829,11 +2171,11 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                             ) : (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300 w-full space-y-6">
 
-                              {/* CREADOR RÁPIDO DE VARIANTES: ARQUITECTURA DE ALTA DENSIDAD */}
+                                    {/* CREADOR RÁPIDO DE VARIANTES: ARQUITECTURA DE ALTA DENSIDAD */}
                                     <div className="bg-neutral-50/60 rounded-2xl p-[0.4rem] md:p-6 border border-neutral-200/70 space-y-5 w-full">
                                         <input type="file" multiple ref={variantImageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant')} />
 
-                                      {/* 🚀 SELECTOR DE ARQUITECTURA DE VARIANTE (3 MODOS EXPLÍCITOS SIN COLISIÓN) */}
+                                        {/* 🚀 SELECTOR DE ARQUITECTURA DE VARIANTE (3 MODOS EXPLÍCITOS SIN COLISIÓN) */}
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white p-2.5 rounded-xl border border-neutral-200/70 shadow-2xs">
                                             <span className="text-[11px] font-bold text-neutral-700 px-1">
                                                 ¿Cómo varía este producto?
@@ -1847,11 +2189,10 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                         updateVariantInput('colorName', '');
                                                         updateVariantInput('images', []);
                                                     }}
-                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${
-                                                        variantMode === 'sizes_only'
+                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${variantMode === 'sizes_only'
                                                             ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
                                                             : 'text-neutral-500 hover:text-neutral-900'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     Solo Tallas
                                                 </button>
@@ -1862,11 +2203,10 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                         setUseColor(true);
                                                         if (variantInput.colorName === 'Talla') updateVariantInput('colorName', '');
                                                     }}
-                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${
-                                                        variantMode === 'color'
+                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${variantMode === 'color'
                                                             ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
                                                             : 'text-neutral-500 hover:text-neutral-900'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     Color + Tallas
                                                 </button>
@@ -1877,11 +2217,10 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                         setUseColor(false);
                                                         if (variantInput.colorName === 'Talla') updateVariantInput('colorName', '');
                                                     }}
-                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${
-                                                        variantMode === 'model'
+                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${variantMode === 'model'
                                                             ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
                                                             : 'text-neutral-500 hover:text-neutral-900'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     Modelo / Estilo
                                                 </button>
@@ -2007,7 +2346,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                 </div>
 
                                                 <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                                                  {[
+                                                    {[
                                                         { label: 'D: S - H: XL', sizes: ['S', 'M', 'L', 'XL'] },
                                                         { label: 'D: XS - H: 2XL', sizes: ['XS', 'S', 'M', 'L', 'XL', '2XL'] },
                                                         { label: 'Pantalón: 28 - 38', sizes: ['28', '30', '32', '34', '36', '38'] },
@@ -2150,7 +2489,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                         {/* Cabecera SKU */}
                                                         <div className="flex items-center justify-between p-3.5 cursor-pointer select-none" onClick={() => setExpandedVariantId(expandedVariantId === v.id ? null : v.id)}>
                                                             <div className="flex items-center gap-3.5 min-w-0">
-                                                               <div className="w-10 h-10 rounded bg-neutral-50 border border-neutral-200/60 overflow-hidden shrink-0 flex items-center justify-center relative shadow-xs">
+                                                                <div className="w-10 h-10 rounded bg-neutral-50 border border-neutral-200/60 overflow-hidden shrink-0 flex items-center justify-center relative shadow-xs">
                                                                     {v.variant_image ? (
                                                                         <Image
                                                                             src={getOptimizedUrl(v.variant_image)}
@@ -2167,7 +2506,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                                         <div className="w-full h-full" style={{ backgroundColor: v.color_hex }} />
                                                                     )}
                                                                 </div>
-                                                         <div className="min-w-0 space-y-0.5">
+                                                                <div className="min-w-0 space-y-0.5">
                                                                     <div className="flex items-center gap-2">
                                                                         {/* 🚀 ELITE: Renderizado inteligente uni/bi-color */}
                                                                         {renderVariantColor(v.color_hex)}
@@ -2181,12 +2520,12 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                                         {!((!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') && v.color_name === 'Talla') && (
                                                                             <span className="text-[10px] font-mono font-bold bg-neutral-100 border border-neutral-200/70 text-neutral-700 px-2 py-0.5 rounded leading-none">{v.size}</span>
                                                                         )}
-                                                                      {v.sku && (
+                                                                        {v.sku && (
                                                                             <span className="text-[9px] font-mono font-bold tabular-nums uppercase tracking-widest bg-neutral-100 text-neutral-600 border border-neutral-200/60 px-1.5 py-0.5 rounded leading-none">
                                                                                 {v.sku}
                                                                             </span>
                                                                         )}
-                                                                      {/* 💎 DISTINCIÓN ÓPTICA PURA: Solo se pinta amarilla si tiene un precio propio real > 0 */}
+                                                                        {/* 💎 DISTINCIÓN ÓPTICA PURA: Solo se pinta amarilla si tiene un precio propio real > 0 */}
                                                                         {Number(v.override_usd_price || 0) > 0 ? (
                                                                             <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 border border-amber-300 rounded flex items-center gap-1">
                                                                                 <span>Precio Fijo: ${Number(v.override_usd_price).toFixed(2)}</span>
@@ -2285,7 +2624,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                                                         className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold tabular-nums uppercase tracking-widest text-neutral-900 outline-none transition-colors placeholder:text-neutral-300"
                                                                                     />
                                                                                 </div>
-                                                                            {/* 🚀 ELITE: Solo muestra el editor de Color si la variante NO es de "Solo Tallas" */}
+                                                                                {/* 🚀 ELITE: Solo muestra el editor de Color si la variante NO es de "Solo Tallas" */}
                                                                                 {(v.color_name !== 'Talla' || (v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent')) && (
                                                                                     <div className="sm:col-span-3 bg-white p-3 rounded-xl border border-neutral-200/70 space-y-2">
                                                                                         <div className="flex items-center justify-between">
@@ -2313,7 +2652,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                                                                             </div>
                                                                         </div>
 
-                                                                     {/* Sobrescribir Precios por SKU */}
+                                                                        {/* Sobrescribir Precios por SKU */}
                                                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-3.5 border-t border-neutral-200/50">
                                                                             <div>
                                                                                 <div className="flex items-center justify-between mb-1">
@@ -2371,7 +2710,7 @@ await revalidateStoreCache(storeSlug, storeSettings?.id)
                         </>
                     )}
                 </div>
-    {/* 🚀 ENLACE MÁGICO DE CAMPAÑA (DISEÑO TECH-EDITORIAL / PREZISO OBSIDIAN) */}
+                {/* 🚀 ENLACE MÁGICO DE CAMPAÑA (DISEÑO TECH-EDITORIAL / PREZISO OBSIDIAN) */}
                 {productId && Number(formData.price) === 0 && (hasVariants ? variants.some(v => v.stock > 0) : Number(simpleStock) > 0) && (
                     <div className="bg-white p-5 md:p-6 rounded-xl border border-neutral-200/70 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-4 animate-in fade-in duration-300">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-neutral-100">
