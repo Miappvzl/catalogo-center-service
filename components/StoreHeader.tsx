@@ -39,13 +39,33 @@ interface StoreHeaderProps {
     onProfileClick: () => void;
 }
 
-const CategoryPill = ({ label, active, onClick, isMinimal = false }: { label: string, active: boolean, onClick: () => void, isMinimal?: boolean }) => (
+const CategoryPill = ({
+    label,
+    active,
+    onClick,
+    isMinimal = false,
+    isPillNav = false
+}: {
+    label: string;
+    active: boolean;
+    onClick: () => void;
+    isMinimal?: boolean;
+    isPillNav?: boolean;
+}) => (
     <button
         onClick={onClick}
-        className={`px-5 py-2 md:px-6 md:py-2 text-[11px] md:text-xs font-medium tracking-wide transition-all duration-300 active:scale-95 whitespace-nowrap 
+        className={`px-5 py-2 md:px-6 md:py-2 text-[11px] md:text-xs tracking-wide transition-all duration-300 active:scale-95 whitespace-nowrap cursor-pointer
         ${isMinimal
-                ? (active ? 'text-[var(--store-text-main)] border-b-2 border-[var(--store-text-main)]' : 'text-[var(--store-surface-text)] border-b-2 border-transparent hover:text-[var(--store-text-main)]')
-                : (active ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[length:var(--border-width-ui)] border-[var(--store-primary)] rounded-[var(--radius-btn)]' : 'bg-[var(--store-surface)] text-[var(--store-text-main)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/40 rounded-[var(--radius-btn)] hover:bg-[var(--store-surface)]')
+                ? (active
+                    ? 'font-semibold text-[var(--store-text-main)] border-b-2 border-[var(--store-text-main)]'
+                    : 'font-medium text-[var(--store-surface-text)] border-b-2 border-transparent hover:text-[var(--store-text-main)]')
+               : isPillNav
+    ? (active
+        ? 'font-semibold bg-[var(--store-primary)] text-[var(--store-primary-text)] border border-[var(--store-primary)] rounded-[var(--radius-btn)] shadow-xs'
+        : 'font-medium bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)] rounded-[var(--radius-btn)] shadow-xs hover:text-[var(--store-text-main)] hover:border-[var(--store-primary)]/50 hover:bg-[var(--store-bg)]')
+                    : (active
+                        ? 'font-semibold bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[length:var(--border-width-ui)] border-[var(--store-primary)] rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)]'
+                        : 'font-medium bg-[var(--store-surface)] text-[var(--store-text-main)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)] hover:border-[var(--store-primary)]/50')
             }`}
     >
         {label}
@@ -222,7 +242,7 @@ const buildRealStoreAnnouncements = (store: any): { icon: any; text: string }[] 
     const pc = store?.payment_config || {};
     const wc = store?.wholesale_config || {};
 
-   // 1. Logística Nacional Real (Uno a uno por cada entidad de envío)
+    // 1. Logística Nacional Real (Uno a uno por cada entidad de envío)
     const couriers: string[] = [];
     if (methods.mrw) couriers.push('MRW');
     if (methods.zoom) couriers.push('Zoom');
@@ -312,9 +332,8 @@ const ClassicTrustTicker = memo(({
 
     return (
         <div
-            className={`flex-1 min-w-0 flex items-center overflow-hidden h-[18px] relative ${
-                centered ? 'justify-start md:justify-center' : 'justify-start'
-            } ${className}`}
+            className={`flex-1 min-w-0 flex items-center overflow-hidden h-[18px] relative ${centered ? 'justify-start md:justify-center' : 'justify-start'
+                } ${className}`}
         >
             <AnimatePresence mode="wait">
                 <motion.div
@@ -422,8 +441,8 @@ const HeroInteractiveCtaOverlay = () => {
             btn.shadow === 'crisp'
                 ? `0 6px 20px -2px ${shadowColor}, 0 2px 6px -1px ${shadowColor}`
                 : btn.shadow === 'subtle'
-                ? `0 3px 10px -1px ${shadowColor}`
-                : 'none';
+                    ? `0 3px 10px -1px ${shadowColor}`
+                    : 'none';
 
         if (btn.fill_style === 'minimal_underline') {
             return (
@@ -492,8 +511,8 @@ const HeroInteractiveCtaOverlay = () => {
             vpConfig.description_shadow === 'crisp'
                 ? `0 2px 12px ${descShadowColor}, 0 1px 3px ${descShadowColor}`
                 : vpConfig.description_shadow === 'subtle'
-                ? `0 1px 6px ${descShadowColor}`
-                : 'none';
+                    ? `0 1px 6px ${descShadowColor}`
+                    : 'none';
 
         const descFontCqw = isMobileViewport
             ? vpConfig.description_size === 'lg' ? '4.4cqw' : vpConfig.description_size === 'sm' ? '3.1cqw' : '3.6cqw'
@@ -676,7 +695,12 @@ const CategoriesBlock = ({ isMinimal = false }: { isMinimal?: boolean }) => {
                         <button onClick={() => props.scrollCategories('left')} className="pointer-events-auto p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] bg-[var(--store-surface)] shadow-[var(--shadow-ui)] text-[var(--store-text-main)] active:scale-95 transition-all duration-150"><ChevronLeft size={14} strokeWidth={2.5} /></button>
                     </div>
 
-                    <div ref={props.categoryScrollRef} onScroll={props.handleCategoryScroll} className="w-full overflow-x-auto no-scrollbar py-1" style={{ WebkitMaskImage: props.dynamicMask, maskImage: props.dynamicMask }}>
+                   <div
+                        ref={props.categoryScrollRef}
+                        onScroll={props.handleCategoryScroll}
+                        className="w-full overflow-x-auto no-scrollbar py-2"
+                        style={{ WebkitMaskImage: props.dynamicMask, maskImage: props.dynamicMask }}
+                    >
                         <div className="flex items-center gap-2 min-w-max md:mx-auto md:w-fit px-1">
                             {props.categories.map((category) => {
                                 const isActivePill = props.selectedCategory === category && !(category === 'Todos' && props.search.trim().length > 0);
@@ -687,6 +711,7 @@ const CategoriesBlock = ({ isMinimal = false }: { isMinimal?: boolean }) => {
                                         active={isActivePill}
                                         onClick={() => props.setSelectedCategory(category)}
                                         isMinimal={isMinimal}
+                                        isPillNav={props.layoutStyle === 'pill_nav'}
                                     />
                                 );
                             })}
@@ -810,11 +835,10 @@ const MobileMenu = () => {
                                                     props.setSelectedCategory(cat);
                                                     setIsMobileMenuOpen(false);
                                                 }}
-                                                className={`w-full px-4 py-3 rounded-full flex items-center justify-between text-left transition-all duration-200 active:scale-[0.98] ${
-                                                    isActive
+                                                className={`w-full px-4 py-3 rounded-full flex items-center justify-between text-left transition-all duration-200 active:scale-[0.98] ${isActive
                                                         ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] font-semibold shadow-xs'
                                                         : 'text-[var(--store-text-main)] hover:bg-[var(--store-surface)] font-medium'
-                                                }`}
+                                                    }`}
                                             >
                                                 <span className="text-sm tracking-wide truncate pr-3">
                                                     {cat}
@@ -823,11 +847,10 @@ const MobileMenu = () => {
                                                 <ChevronRight
                                                     size={15}
                                                     strokeWidth={1.75}
-                                                    className={`shrink-0 transition-transform duration-200 ${
-                                                        isActive
+                                                    className={`shrink-0 transition-transform duration-200 ${isActive
                                                             ? 'text-[var(--store-primary-text)] translate-x-0.5'
                                                             : 'text-[var(--store-surface-text)]/50'
-                                                    }`}
+                                                        }`}
                                                 />
                                             </button>
                                         );
@@ -891,7 +914,7 @@ const MobileMenu = () => {
         );
     }
 
- return (
+    return (
         <AnimatePresence>
             {isMobileMenuOpen && (
                 <div className="fixed inset-0 z-[100] md:hidden flex justify-end">
@@ -942,20 +965,18 @@ const MobileMenu = () => {
                                         >
                                             <div className="flex items-baseline gap-4 min-w-0 pr-3">
                                                 <span
-                                                    className={`font-mono text-[10px] tabular-nums shrink-0 transition-colors ${
-                                                        isActive
+                                                    className={`font-mono text-[10px] tabular-nums shrink-0 transition-colors ${isActive
                                                             ? 'text-[var(--store-primary)] font-bold'
                                                             : 'text-[var(--store-surface-text)]/50 group-hover:text-[var(--store-text-main)]'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {(idx + 1).toString().padStart(2, '0')}
                                                 </span>
                                                 <span
-                                                    className={`text-lg tracking-tight truncate transition-colors ${
-                                                        isActive
+                                                    className={`text-lg tracking-tight truncate transition-colors ${isActive
                                                             ? 'font-bold text-[var(--store-text-main)]'
                                                             : 'font-normal text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)]'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {cat}
                                                 </span>
@@ -1166,171 +1187,44 @@ function StoreHeader(props: StoreHeaderProps) {
     const renderHeaderLayout = () => {
 
 
-    // ==========================================
-    // 🛠️ RENDERIZADO: TEMA 2 - INDUSTRIAL PRO (DENSE SEARCH)
-    // ==========================================
-  if (props.layoutStyle === 'dense_search') {
-        return (
-            <>
-                {/* 1. ENCABEZADO STICKY (Datos Reales de Logística y Pagos) */}
-                <div className={`sticky top-0 z-40 bg-[var(--store-bg)] border-b-[length:var(--border-width-ui)] border-[var(--store-border)] transition-transform duration-300 will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+        // ==========================================
+        // 🛠️ RENDERIZADO: TEMA 2 - INDUSTRIAL PRO (DENSE SEARCH)
+        // ==========================================
+        if (props.layoutStyle === 'dense_search') {
+            return (
+                <>
+                    {/* 1. ENCABEZADO STICKY (Datos Reales de Logística y Pagos) */}
+                    <div className={`sticky top-0 z-40 bg-[var(--store-bg)] border-b-[length:var(--border-width-ui)] border-[var(--store-border)] transition-transform duration-300 will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
 
-                   <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)]/40 px-4 md:px-8 py-2 flex justify-between items-center gap-3 text-[10px] font-mono">
-                        <div className="flex items-center gap-2 min-w-0 flex-1 font-bold text-[var(--store-text-main)]">
-                            <span className="w-1.5 h-1.5 bg-[var(--store-primary)] shrink-0" />
-                            <ClassicTrustTicker
-                                announcements={realAnnouncements}
-                                centered={false}
-                                showIcon={false}
-                            />
+                        <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)]/40 px-4 md:px-8 py-2 flex justify-between items-center gap-3 text-[10px] font-mono">
+                            <div className="flex items-center gap-2 min-w-0 flex-1 font-bold text-[var(--store-text-main)]">
+                                <span className="w-1.5 h-1.5 bg-[var(--store-primary)] shrink-0" />
+                                <ClassicTrustTicker
+                                    announcements={realAnnouncements}
+                                    centered={false}
+                                    showIcon={false}
+                                />
+                            </div>
+                            <RateBlock />
                         </div>
-                        <RateBlock />
+
+                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-4 md:gap-8">
+                                <LogoBlock />
+                                <div className="hidden md:flex flex-1 max-w-3xl">{renderSearchBlock(true)}</div>
+                                <div className="flex items-center gap-1.5 shrink-0"><IconsBlock /></div>
+                            </div>
+                            <div className="block md:hidden w-full">{renderSearchBlock(true)}</div>
+                            <div className="pt-1 hidden md:block"><CategoriesBlock /></div>
+                        </div>
+
                     </div>
+                    <MobileMenu />
 
-                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 flex flex-col gap-3">
-                        <div className="flex items-center justify-between gap-4 md:gap-8">
-                            <LogoBlock />
-                            <div className="hidden md:flex flex-1 max-w-3xl">{renderSearchBlock(true)}</div>
-                            <div className="flex items-center gap-1.5 shrink-0"><IconsBlock /></div>
-                        </div>
-                        <div className="block md:hidden w-full">{renderSearchBlock(true)}</div>
-                        <div className="pt-1 hidden md:block"><CategoriesBlock /></div>
-                    </div>
-                   
-                </div>
-                 <MobileMenu />
-
-                {/* 2. HERO BANNER INDUSTRIAL */}
-                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
-                    <div className="relative w-full bg-[var(--store-bg)] flex justify-center overflow-hidden -mt-[1px]">
-                        <div className="relative w-full">
-                            {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
-                                <div className="hidden md:block w-full">
-                                    <Image
-                                        src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)}
-                                        alt="Banner de escritorio"
-                                        width={1920}
-                                        height={600}
-                                        className="w-full h-auto block"
-                                        priority
-                                    />
-                                </div>
-                            )}
-
-                            {liveTheme.layout?.hero_mobile_url && (
-                                <div className="block md:hidden w-full">
-                                    <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
-                                        <Image
-                                            src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
-                                            alt="Portada móvil"
-                                            fill
-                                            className="object-cover object-center"
-                                            priority
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <HeroInteractiveCtaOverlay />
-                    </div>
-                )}
-            </>
-        );
-    }
-
-    // ==========================================
-    // 💎 RENDERIZADO: TEMA 3 - MINIMAL LUXURY (GLASS HEADER)
-    // ==========================================
-    if (props.layoutStyle === 'minimal') {
-        const customHeroSubtitle = liveTheme.layout?.hero_subtitle?.trim();
-
-        return (
-            <>
-                <div className={`fixed top-0 left-0 right-0 z-40 bg-[var(--store-bg)]/80 backdrop-blur-md border-b-[length:var(--border-width-ui)] border-[var(--store-border)]/30 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-
-                  {/* Top Bar Elegante con Ticker Vertical */}
-                    <div className="bg-[var(--store-text-main)] text-[var(--store-bg)] px-4 md:px-8 py-1.5 flex justify-between items-center gap-4 text-[8px] md:text-[9px] uppercase tracking-[0.2em] font-bold">
-                        <ClassicTrustTicker
-                            announcements={realAnnouncements}
-                            centered={false}
-                            showIcon={false}
-                            className="opacity-90"
-                        />
-                        <div className="flex items-center gap-2 opacity-90 shrink-0">
-                            <span>{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}: Bs. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
-                        </div>
-                    </div>
-
-                    {/* Main Header Simétrico */}
-                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-4 md:py-5 flex items-center justify-between">
-                        <div className="flex-1 flex justify-start">
-                            <button onClick={() => setIsMobileMenuOpen(true)} className="flex items-center gap-2 text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
-                                <Menu size={22} strokeWidth={1} />
-                                <span className="hidden md:block text-[10px] font-bold uppercase tracking-widest mt-0.5">Menú</span>
-                            </button>
-                        </div>
-
-                        <div className="flex-1 flex justify-center">
-                            <LogoBlock centered />
-                        </div>
-
-                        <div className="flex-1 flex justify-end items-center gap-1 md:gap-3">
-                            <button onClick={() => setIsMinimalSearchOpen(!isMinimalSearchOpen)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
-                                {isMinimalSearchOpen ? <X size={20} strokeWidth={1} /> : <Search size={20} strokeWidth={1} />}
-                            </button>
-                            <button onClick={props.onProfileClick} className="w-10 h-10 hidden md:flex items-center justify-center text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
-                                <UserCircle size={22} strokeWidth={1} />
-                            </button>
-                            <button data-cart-target="true" onClick={handleOpenCart} className="hidden md:flex relative p-2 text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
-                                <motion.div animate={props.cartControls} className="flex items-center justify-center origin-top">
-                                    <ShoppingBag size={20} strokeWidth={1} />
-                                </motion.div>
-                                <AnimatePresence>
-                                    {props.hasItems && (
-                                        <motion.span key={props.totalItems} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute top-1.5 right-1 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[8px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full">
-                                            {props.totalItems}
-                                        </motion.span>
-                                    )}
-                                </AnimatePresence>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Buscador Desplegable Agnóstico */}
-                    <AnimatePresence>
-                        {isMinimalSearchOpen && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: "visible" } }}
-                                exit={{ height: 0, opacity: 0, overflow: "hidden" }}
-                                style={{ overflow: "hidden" }}
-                                className="flex justify-center bg-[var(--store-bg)] border-t border-[var(--store-border)]/30"
-                            >
-                                <div className="w-full m-2 max-w-2xl relative my-6 px-1">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={18} strokeWidth={1} />
-                                    <input
-                                        type="text"
-                                        placeholder={agnosticSearchPlaceholder}
-                                        value={props.search}
-                                        onChange={(e) => props.setSearch(e.target.value)}
-                                        onFocus={() => setIsSearchFocused(true)}
-                                        onBlur={() => setIsSearchFocused(false)}
-                                        className="w-full bg-transparent border-0 border-b-[length:var(--border-width-ui)] border-[var(--store-border)] py-4 pl-12 pr-4 text-base font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-0 focus:border-[var(--store-text-main)] transition-colors font-heading italic"
-                                    />
-                                    <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-
-                <MobileMenu />
-
-                {/* 💎 2. HERO BANNER EDITORIAL RESPONSIVO (Subtítulo solo si fue configurado por la tienda) */}
-                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) ? (
-                    <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden pt-[90px] md:pt-[130px]">
-                        <div className="w-full max-w-[1500px] px-4 md:px-12 py-4 md:py-6">
-                            <div className="relative w-full overflow-hidden rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/30 bg-[var(--store-surface)]">
+                    {/* 2. HERO BANNER INDUSTRIAL */}
+                    {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
+                        <div className="relative w-full bg-[var(--store-bg)] flex justify-center overflow-hidden -mt-[1px]">
+                            <div className="relative w-full">
                                 {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
                                     <div className="hidden md:block w-full">
                                         <Image
@@ -1357,61 +1251,215 @@ function StoreHeader(props: StoreHeaderProps) {
                                         </div>
                                     </div>
                                 )}
-                                <HeroInteractiveCtaOverlay />
+                            </div>
+                            <HeroInteractiveCtaOverlay />
+                        </div>
+                    )}
+                </>
+            );
+        }
+
+        // ==========================================
+        // 💎 RENDERIZADO: TEMA 3 - MINIMAL LUXURY (GLASS HEADER)
+        // ==========================================
+        if (props.layoutStyle === 'minimal') {
+            const customHeroSubtitle = liveTheme.layout?.hero_subtitle?.trim();
+
+            return (
+                <>
+                    <div className={`fixed top-0 left-0 right-0 z-40 bg-[var(--store-bg)]/80 backdrop-blur-md border-b-[length:var(--border-width-ui)] border-[var(--store-border)]/30 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+
+                        {/* Top Bar Elegante con Ticker Vertical */}
+                        <div className="bg-[var(--store-text-main)] text-[var(--store-bg)] px-4 md:px-8 py-1.5 flex justify-between items-center gap-4 text-[8px] md:text-[9px] uppercase tracking-[0.2em] font-bold">
+                            <ClassicTrustTicker
+                                announcements={realAnnouncements}
+                                centered={false}
+                                showIcon={false}
+                                className="opacity-90"
+                            />
+                            <div className="flex items-center gap-2 opacity-90 shrink-0">
+                                <span>{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}: Bs. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
+                            </div>
+                        </div>
+
+                        {/* Main Header Simétrico */}
+                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-4 md:py-5 flex items-center justify-between">
+                            <div className="flex-1 flex justify-start">
+                                <button onClick={() => setIsMobileMenuOpen(true)} className="flex items-center gap-2 text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
+                                    <Menu size={22} strokeWidth={1} />
+                                    <span className="hidden md:block text-[10px] font-bold uppercase tracking-widest mt-0.5">Menú</span>
+                                </button>
                             </div>
 
-                            {customHeroSubtitle && (
-                                <div className="w-full text-center py-5 border-b border-[var(--store-border)]/20">
-                                    <p className="font-heading italic text-xs md:text-sm text-[var(--store-surface-text)] tracking-wider">
-                                        {customHeroSubtitle}
-                                    </p>
-                                </div>
+                            <div className="flex-1 flex justify-center">
+                                <LogoBlock centered />
+                            </div>
+
+                            <div className="flex-1 flex justify-end items-center gap-1 md:gap-3">
+                                <button onClick={() => setIsMinimalSearchOpen(!isMinimalSearchOpen)} className="w-10 h-10 flex items-center justify-center text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
+                                    {isMinimalSearchOpen ? <X size={20} strokeWidth={1} /> : <Search size={20} strokeWidth={1} />}
+                                </button>
+                                <button onClick={props.onProfileClick} className="w-10 h-10 hidden md:flex items-center justify-center text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
+                                    <UserCircle size={22} strokeWidth={1} />
+                                </button>
+                                <button data-cart-target="true" onClick={handleOpenCart} className="hidden md:flex relative p-2 text-[var(--store-text-main)] hover:opacity-70 transition-opacity active:scale-95">
+                                    <motion.div animate={props.cartControls} className="flex items-center justify-center origin-top">
+                                        <ShoppingBag size={20} strokeWidth={1} />
+                                    </motion.div>
+                                    <AnimatePresence>
+                                        {props.hasItems && (
+                                            <motion.span key={props.totalItems} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute top-1.5 right-1 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[8px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full">
+                                                {props.totalItems}
+                                            </motion.span>
+                                        )}
+                                    </AnimatePresence>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Buscador Desplegable Agnóstico */}
+                        <AnimatePresence>
+                            {isMinimalSearchOpen && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: "visible" } }}
+                                    exit={{ height: 0, opacity: 0, overflow: "hidden" }}
+                                    style={{ overflow: "hidden" }}
+                                    className="flex justify-center bg-[var(--store-bg)] border-t border-[var(--store-border)]/30"
+                                >
+                                    <div className="w-full m-2 max-w-2xl relative my-6 px-1">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={18} strokeWidth={1} />
+                                        <input
+                                            type="text"
+                                            placeholder={agnosticSearchPlaceholder}
+                                            value={props.search}
+                                            onChange={(e) => props.setSearch(e.target.value)}
+                                            onFocus={() => setIsSearchFocused(true)}
+                                            onBlur={() => setIsSearchFocused(false)}
+                                            className="w-full bg-transparent border-0 border-b-[length:var(--border-width-ui)] border-[var(--store-border)] py-4 pl-12 pr-4 text-base font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-0 focus:border-[var(--store-text-main)] transition-colors font-heading italic"
+                                        />
+                                        <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
+                                    </div>
+                                </motion.div>
                             )}
-                        </div>
+                        </AnimatePresence>
                     </div>
-                ) : (
-                    <div className="w-full pt-[90px] md:pt-[120px] pointer-events-none shrink-0" />
-                )}
-            </>
-        );
-    }
 
-    // ==========================================
-    // 🏴‍☠️ RENDERIZADO: TEMA 4 - BRUTALIST / ARCHITECTURAL
-    // ==========================================
-    if (props.layoutStyle === 'brutalist') {
-        const marqueeEntries = [
-            ...realAnnouncements.map(a => a.text.toUpperCase()),
-            `TASA OFICIAL ${props.isEur ? 'EUR' : 'BCV'}: BS. ${Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}`
-        ];
+                    <MobileMenu />
 
-        return (
-            <>
-                {/* 1. MARQUEE TICKER (Datos Reales del Comercio) */}
-                <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] py-2 overflow-hidden flex items-center select-none border-b border-[var(--store-bg)]/10">
-                    <motion.div
-                        animate={{ x: ["0%", "-50%"] }}
-                        transition={{ repeat: Infinity, duration: 24, ease: "linear" }}
-                        className="flex items-center gap-12 whitespace-nowrap text-[9px] md:text-[10px] font-mono uppercase tracking-[0.25em] opacity-90 font-medium"
-                    >
-                        {[...marqueeEntries, ...marqueeEntries].map((entry, idx) => (
-                            <React.Fragment key={idx}>
-                                <span>{entry}</span>
-                                <span className="opacity-40">/</span>
-                            </React.Fragment>
-                        ))}
-                    </motion.div>
-                </div>
+                    {/* 💎 2. HERO BANNER EDITORIAL RESPONSIVO (Subtítulo solo si fue configurado por la tienda) */}
+                    {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) ? (
+                        <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden pt-[90px] md:pt-[130px]">
+                            <div className="w-full max-w-[1500px] px-4 md:px-12 py-4 md:py-6">
+                                <div className="relative w-full overflow-hidden rounded-[var(--radius-card)] border-[length:var(--border-width-ui)] border-[var(--store-border)]/30 bg-[var(--store-surface)]">
+                                    {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
+                                        <div className="hidden md:block w-full">
+                                            <Image
+                                                src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)}
+                                                alt="Banner de escritorio"
+                                                width={1920}
+                                                height={600}
+                                                className="w-full h-auto block"
+                                                priority
+                                            />
+                                        </div>
+                                    )}
 
-                {/* 2. ENCABEZADO MONOLÍTICO */}
-                <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/30 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <LogoBlock />
+                                    {liveTheme.layout?.hero_mobile_url && (
+                                        <div className="block md:hidden w-full">
+                                            <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
+                                                <Image
+                                                    src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
+                                                    alt="Portada móvil"
+                                                    fill
+                                                    className="object-cover object-center"
+                                                    priority
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                    <HeroInteractiveCtaOverlay />
+                                </div>
+
+                                {customHeroSubtitle && (
+                                    <div className="w-full text-center py-5 border-b border-[var(--store-border)]/20">
+                                        <p className="font-heading italic text-xs md:text-sm text-[var(--store-surface-text)] tracking-wider">
+                                            {customHeroSubtitle}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="w-full pt-[90px] md:pt-[120px] pointer-events-none shrink-0" />
+                    )}
+                </>
+            );
+        }
+
+        // ==========================================
+        // 🏴‍☠️ RENDERIZADO: TEMA 4 - BRUTALIST / ARCHITECTURAL
+        // ==========================================
+        if (props.layoutStyle === 'brutalist') {
+            const marqueeEntries = [
+                ...realAnnouncements.map(a => a.text.toUpperCase()),
+                `TASA OFICIAL ${props.isEur ? 'EUR' : 'BCV'}: BS. ${Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}`
+            ];
+
+            return (
+                <>
+                    {/* 1. MARQUEE TICKER (Datos Reales del Comercio) */}
+                    <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] py-2 overflow-hidden flex items-center select-none border-b border-[var(--store-bg)]/10">
+                        <motion.div
+                            animate={{ x: ["0%", "-50%"] }}
+                            transition={{ repeat: Infinity, duration: 24, ease: "linear" }}
+                            className="flex items-center gap-12 whitespace-nowrap text-[9px] md:text-[10px] font-mono uppercase tracking-[0.25em] opacity-90 font-medium"
+                        >
+                            {[...marqueeEntries, ...marqueeEntries].map((entry, idx) => (
+                                <React.Fragment key={idx}>
+                                    <span>{entry}</span>
+                                    <span className="opacity-40">/</span>
+                                </React.Fragment>
+                            ))}
+                        </motion.div>
+                    </div>
+
+                    {/* 2. ENCABEZADO MONOLÍTICO */}
+                    <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/30 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <LogoBlock />
+                            </div>
+
+                            <div className="hidden md:flex flex-1 max-w-md justify-center">
+                                <div className="relative w-full max-w-sm group">
+                                    <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-text-main)] transition-colors" size={14} strokeWidth={2} />
+                                    <input
+                                        type="text"
+                                        placeholder="BUSCAR EN EL CATÁLOGO..."
+                                        value={props.search}
+                                        onChange={(e) => props.setSearch(e.target.value)}
+                                        onFocus={() => setIsSearchFocused(true)}
+                                        onBlur={() => setIsSearchFocused(false)}
+                                        className="w-full bg-transparent border-b border-[var(--store-border)]/50 pl-7 pr-4 py-2 text-[11px] font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-text-main)] uppercase tracking-[0.2em] transition-colors"
+                                    />
+                                    <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
+                                    {props.search && (
+                                        <button onClick={() => props.setSearch("")} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors">
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 shrink-0">
+                                <div className="hidden md:block"><RateBlock /></div>
+                                <IconsBlock />
+                            </div>
                         </div>
 
-                        <div className="hidden md:flex flex-1 max-w-md justify-center">
-                            <div className="relative w-full max-w-sm group">
+                        <div className="px-4 pb-4 flex flex-col gap-2 md:hidden">
+                            <div className="relative w-full group">
                                 <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-text-main)] transition-colors" size={14} strokeWidth={2} />
                                 <input
                                     type="text"
@@ -1423,101 +1471,93 @@ function StoreHeader(props: StoreHeaderProps) {
                                     className="w-full bg-transparent border-b border-[var(--store-border)]/50 pl-7 pr-4 py-2 text-[11px] font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-text-main)] uppercase tracking-[0.2em] transition-colors"
                                 />
                                 <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
-                                {props.search && (
-                                    <button onClick={() => props.setSearch("")} className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors">
-                                        <X size={14} />
-                                    </button>
-                                )}
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4 shrink-0">
-                            <div className="hidden md:block"><RateBlock /></div>
-                            <IconsBlock />
+                        <div className="px-4 md:px-8 pb-3 pt-1">
+                            <CategoriesBlock isMinimal={true} />
                         </div>
                     </div>
 
-                    <div className="px-4 pb-4 flex flex-col gap-2 md:hidden">
-                        <div className="relative w-full group">
-                            <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-text-main)] transition-colors" size={14} strokeWidth={2} />
-                            <input
-                                type="text"
-                                placeholder="BUSCAR EN EL CATÁLOGO..."
-                                value={props.search}
-                                onChange={(e) => props.setSearch(e.target.value)}
-                                onFocus={() => setIsSearchFocused(true)}
-                                onBlur={() => setIsSearchFocused(false)}
-                                className="w-full bg-transparent border-b border-[var(--store-border)]/50 pl-7 pr-4 py-2 text-[11px] font-mono font-bold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:border-[var(--store-text-main)] uppercase tracking-[0.2em] transition-colors"
-                            />
-                            <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
+                    <MobileMenu />
+
+                    {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
+                        <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden border-b border-[var(--store-border)]/20">
+                            <div className="relative w-full max-w-[1500px]">
+                                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
+                                    <div className="hidden md:block w-full">
+                                        <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Banner Principal" width={1920} height={600} className="w-full h-auto block" priority />
+                                    </div>
+                                )}
+                                {liveTheme.layout?.hero_mobile_url && (
+                                    <div className="block md:hidden w-full">
+                                        <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
+                                            <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Portada Móvil" fill className="object-cover object-center" priority />
+                                        </div>
+                                    </div>
+                                )}
+                                <HeroInteractiveCtaOverlay />
+                            </div>
                         </div>
-                    </div>
+                    )}
+                </>
+            );
+        }
 
-                    <div className="px-4 md:px-8 pb-3 pt-1">
-                        <CategoriesBlock isMinimal={true} />
-                    </div>
-                </div>
+        if (props.layoutStyle === 'pill_nav') {
+            return (
+                <>
+                    <RestaurantScheduleBanner
+                        storeHours={props.store.store_hours}
+                        storeType={props.store.store_type}
+                    />
 
-                <MobileMenu />
-
-                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
-                    <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden border-b border-[var(--store-border)]/20">
-                        <div className="relative w-full max-w-[1500px]">
-                            {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
-                                <div className="hidden md:block w-full">
-                                    <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Banner Principal" width={1920} height={600} className="w-full h-auto block" priority />
+                    <div className="bg-[var(--store-bg)] px-4 md:px-8 py-2 flex items-center justify-between gap-3 border-b border-[var(--store-border)]/40 text-xs font-bold">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {props.store?.store_type === 'restaurant' ? (
+                                <StoreScheduleBadge storeHours={props.store.store_hours} storeType={props.store.store_type} />
+                            ) : (
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1 text-[10px] font-bold text-[var(--store-text-main)]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] shrink-0" />
+                                    <ClassicTrustTicker
+                                        announcements={realAnnouncements}
+                                        centered={false}
+                                        showIcon={false}
+                                        className="uppercase tracking-wider font-mono text-[9px] text-[var(--store-surface-text)]"
+                                    />
                                 </div>
                             )}
-                            {liveTheme.layout?.hero_mobile_url && (
-                                <div className="block md:hidden w-full">
-                                    <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
-                                        <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Portada Móvil" fill className="object-cover object-center" priority />
+                        </div>
+                        <RateBlock />
+                    </div>
+
+                    <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/40 transition-transform duration-300 ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-4">
+                                <LogoBlock />
+
+                                <div className="hidden md:flex flex-1 max-w-lg">
+                                    <div className="relative w-full">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={16} />
+                                        <input
+                                            type="text"
+                                            placeholder={agnosticSearchPlaceholder}
+                                            value={props.search}
+                                            onChange={(e) => props.setSearch(e.target.value)}
+                                            onFocus={() => setIsSearchFocused(true)}
+                                            onBlur={() => setIsSearchFocused(false)}
+                                            className="w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-full pl-11 pr-4 py-2.5 text-xs font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-2 focus:ring-[var(--store-primary)]/20 shadow-xs"
+                                        />
+                                        <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
                                     </div>
                                 </div>
-                            )}
-                            <HeroInteractiveCtaOverlay />
-                        </div>
-                    </div>
-                )}
-            </>
-        );
-    }
 
-    if (props.layoutStyle === 'pill_nav') {
-        return (
-            <>
-                <RestaurantScheduleBanner
-                    storeHours={props.store.store_hours}
-                    storeType={props.store.store_type}
-                />
-
-              <div className="bg-[var(--store-bg)] px-4 md:px-8 py-2 flex items-center justify-between gap-3 border-b border-[var(--store-border)]/40 text-xs font-bold">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {props.store?.store_type === 'restaurant' ? (
-                            <StoreScheduleBadge storeHours={props.store.store_hours} storeType={props.store.store_type} />
-                        ) : (
-                            <div className="flex items-center gap-1.5 min-w-0 flex-1 text-[10px] font-bold text-[var(--store-text-main)]">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--store-primary)] shrink-0" />
-                                <ClassicTrustTicker
-                                    announcements={realAnnouncements}
-                                    centered={false}
-                                    showIcon={false}
-                                    className="uppercase tracking-wider font-mono text-[9px] text-[var(--store-surface-text)]"
-                                />
+                                <IconsBlock />
                             </div>
-                        )}
-                    </div>
-                    <RateBlock />
-                </div>
 
-                <div className={`sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/40 transition-transform duration-300 ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 flex flex-col gap-3">
-                        <div className="flex items-center justify-between gap-4">
-                            <LogoBlock />
-
-                            <div className="hidden md:flex flex-1 max-w-lg">
+                            <div className="block md:hidden w-full">
                                 <div className="relative w-full">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={16} />
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={15} />
                                     <input
                                         type="text"
                                         placeholder={agnosticSearchPlaceholder}
@@ -1531,431 +1571,412 @@ function StoreHeader(props: StoreHeaderProps) {
                                 </div>
                             </div>
 
-                            <IconsBlock />
-                        </div>
-
-                        <div className="block md:hidden w-full">
-                            <div className="relative w-full">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)]" size={15} />
-                                <input
-                                    type="text"
-                                    placeholder={agnosticSearchPlaceholder}
-                                    value={props.search}
-                                    onChange={(e) => props.setSearch(e.target.value)}
-                                    onFocus={() => setIsSearchFocused(true)}
-                                    onBlur={() => setIsSearchFocused(false)}
-                                    className="w-full bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-full pl-11 pr-4 py-2.5 text-xs font-medium text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none focus:ring-2 focus:ring-[var(--store-primary)]/20 shadow-xs"
-                                />
-                                <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
+                            <div className="pt-1">
+                                <CategoriesBlock />
                             </div>
                         </div>
-
-                       <div className="pt-1">
-                            <CategoriesBlock />
-                        </div>
                     </div>
-                </div>
 
-                {/* 👇 AGREGA ESTA LÍNEA AQUÍ */}
-                <MobileMenu />
+                    {/* 👇 AGREGA ESTA LÍNEA AQUÍ */}
+                    <MobileMenu />
 
-                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
-                    <div className="relative w-full bg-[var(--store-bg)] flex justify-center overflow-hidden">
-                        <div className="relative w-full max-w-[1500px]">
-                            {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
-                                <div className="hidden md:block w-full">
-                                    <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Banner Principal" width={1920} height={600} className="w-full h-auto block" priority />
-                                </div>
-                            )}
-                            {liveTheme.layout?.hero_mobile_url && (
-                                <div className="block md:hidden w-full">
-                                    <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
-                                        <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Portada Móvil" fill className="object-cover object-center" priority />
+                    {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
+                        <div className="relative w-full bg-[var(--store-bg)] flex justify-center overflow-hidden">
+                            <div className="relative w-full max-w-[1500px]">
+                                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
+                                    <div className="hidden md:block w-full">
+                                        <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Banner Principal" width={1920} height={600} className="w-full h-auto block" priority />
                                     </div>
-                                </div>
-                            )}
-                            <HeroInteractiveCtaOverlay />
+                                )}
+                                {liveTheme.layout?.hero_mobile_url && (
+                                    <div className="block md:hidden w-full">
+                                        <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
+                                            <Image src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)} alt="Portada Móvil" fill className="object-cover object-center" priority />
+                                        </div>
+                                    </div>
+                                )}
+                                <HeroInteractiveCtaOverlay />
+                            </div>
+                        </div>
+                    )}
+                </>
+            );
+        }
+
+        // ==========================================
+        // 💻 RENDERIZADO: TEMA 6 - MODULAR TECH (BENTO GRID & PERFORMANCE)
+        // ==========================================
+        if (props.layoutStyle === 'modular_tech') {
+            const bentoPromos = (props.promotions || []).filter(p => p.is_active).slice(0, 2);
+            const rawTrustBadges = liveTheme.layout?.trust_badges || [];
+            // Si los badges son los genéricos por defecto ("En órdenes sobre $100"), los descartamos para no mostrar promesas falsas
+            const hasCustomTrustBadges = rawTrustBadges.length > 0 && rawTrustBadges[0]?.description !== 'En órdenes sobre $100';
+
+            return (
+                <>
+                    {/* 1. TOP BAR UTILITARIA CON TICKER VERTICAL */}
+                    <div className="hidden md:flex items-center justify-between gap-6 px-8 py-2 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[10px] font-bold uppercase tracking-widest">
+                        <ClassicTrustTicker
+                            announcements={realAnnouncements}
+                            centered={false}
+                            showIcon={true}
+                            iconSize={12}
+                            className="opacity-90"
+                        />
+                        <div className="opacity-90 shrink-0">
+                            <span>{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}: Bs. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
                         </div>
                     </div>
-                )}
-            </>
-        );
-    }
 
-    // ==========================================
-    // 💻 RENDERIZADO: TEMA 6 - MODULAR TECH (BENTO GRID & PERFORMANCE)
-    // ==========================================
-    if (props.layoutStyle === 'modular_tech') {
-        const bentoPromos = (props.promotions || []).filter(p => p.is_active).slice(0, 2);
-        const rawTrustBadges = liveTheme.layout?.trust_badges || [];
-        // Si los badges son los genéricos por defecto ("En órdenes sobre $100"), los descartamos para no mostrar promesas falsas
-        const hasCustomTrustBadges = rawTrustBadges.length > 0 && rawTrustBadges[0]?.description !== 'En órdenes sobre $100';
+                    {/* 2. MAIN HEADER ESTRUCTURADO */}
+                    <div className={`sticky top-0 z-40 bg-[var(--store-surface)] border-b border-[var(--store-border)] transition-transform duration-300 ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3 md:py-4 flex flex-col md:flex-row items-center gap-3 md:gap-8">
+                            <div className="flex items-center justify-between w-full md:w-auto">
+                                <LogoBlock />
+                                <div className="flex md:hidden items-center gap-3">
+                                    <RateBlock />
+                                    <IconsBlock />
+                                </div>
+                            </div>
 
-        return (
-            <>
-               {/* 1. TOP BAR UTILITARIA CON TICKER VERTICAL */}
-                <div className="hidden md:flex items-center justify-between gap-6 px-8 py-2 bg-[var(--store-text-main)] text-[var(--store-bg)] text-[10px] font-bold uppercase tracking-widest">
-                    <ClassicTrustTicker
-                        announcements={realAnnouncements}
-                        centered={false}
-                        showIcon={true}
-                        iconSize={12}
-                        className="opacity-90"
-                    />
-                    <div className="opacity-90 shrink-0">
-                        <span>{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}: Bs. {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}</span>
-                    </div>
-                </div>
+                            <div className="w-full md:flex-1">
+                                <div className="relative w-full group">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2.5} />
+                                    <input
+                                        type="text"
+                                        placeholder={agnosticSearchPlaceholder}
+                                        value={props.search}
+                                        onChange={(e) => props.setSearch(e.target.value)}
+                                        onFocus={() => setIsSearchFocused(true)}
+                                        onBlur={() => setIsSearchFocused(false)}
+                                        style={{ borderRadius: 'var(--radius-search)', borderWidth: 'var(--border-width-ui)' }}
+                                        className="w-full bg-[var(--store-bg)] focus:bg-[var(--store-surface)] border-[var(--store-border)] focus:border-[var(--store-primary)] pl-11 pr-4 py-3 text-sm font-semibold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none transition-all shadow-[var(--shadow-ui)]"
+                                    />
+                                    {props.search && (
+                                        <button onClick={() => props.setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors">
+                                            <X size={16} strokeWidth={2.5} />
+                                        </button>
+                                    )}
+                                    <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
+                                </div>
+                            </div>
 
-                {/* 2. MAIN HEADER ESTRUCTURADO */}
-                <div className={`sticky top-0 z-40 bg-[var(--store-surface)] border-b border-[var(--store-border)] transition-transform duration-300 ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3 md:py-4 flex flex-col md:flex-row items-center gap-3 md:gap-8">
-                        <div className="flex items-center justify-between w-full md:w-auto">
-                            <LogoBlock />
-                            <div className="flex md:hidden items-center gap-3">
-                                <RateBlock />
+                            <div className="hidden md:flex items-center gap-4 shrink-0">
                                 <IconsBlock />
                             </div>
                         </div>
-
-                        <div className="w-full md:flex-1">
-                            <div className="relative w-full group">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] group-focus-within:text-[var(--store-primary)] transition-colors" size={16} strokeWidth={2.5} />
-                                <input
-                                    type="text"
-                                    placeholder={agnosticSearchPlaceholder}
-                                    value={props.search}
-                                    onChange={(e) => props.setSearch(e.target.value)}
-                                    onFocus={() => setIsSearchFocused(true)}
-                                    onBlur={() => setIsSearchFocused(false)}
-                                    style={{ borderRadius: 'var(--radius-search)', borderWidth: 'var(--border-width-ui)' }}
-                                    className="w-full bg-[var(--store-bg)] focus:bg-[var(--store-surface)] border-[var(--store-border)] focus:border-[var(--store-primary)] pl-11 pr-4 py-3 text-sm font-semibold text-[var(--store-text-main)] placeholder:text-[var(--store-surface-text)] outline-none transition-all shadow-[var(--shadow-ui)]"
-                                />
-                                {props.search && (
-                                    <button onClick={() => props.setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--store-surface-text)] hover:text-[var(--store-text-main)] transition-colors">
-                                        <X size={16} strokeWidth={2.5} />
-                                    </button>
-                                )}
-                                <LiveSearchPopover search={props.search} products={props.products} activeRate={props.activeRate} isFocused={isSearchFocused} setIsFocused={setIsSearchFocused} setSearch={props.setSearch} />
-                            </div>
-                        </div>
-
-                        <div className="hidden md:flex items-center gap-4 shrink-0">
-                            <IconsBlock />
-                        </div>
                     </div>
-                </div>
 
-                <MobileMenu />
+                    <MobileMenu />
 
-                {/* 3. HERO & BENTO PROMO GRID */}
-                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
-                    <div className="w-full bg-[var(--store-bg)] flex justify-center py-4 md:py-8 px-4 md:px-8 border-b border-[var(--store-border)]">
-                        <div className="w-full max-w-[1500px]">
-                            <div className={`hidden md:grid gap-4 items-stretch ${bentoPromos.length > 0 ? 'grid-cols-12' : 'grid-cols-1'}`}>
-                                <div
-                                    className={`relative overflow-hidden bg-[var(--store-surface)] border-[var(--store-border)] ${bentoPromos.length > 0 ? 'col-span-8 aspect-[16/5]' : 'col-span-full aspect-[16/5]'}`}
-                                    style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}
-                                >
-                                    <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Hero" fill className="object-cover object-center" priority />
-                                    <HeroInteractiveCtaOverlay />
-                                </div>
+                    {/* 3. HERO & BENTO PROMO GRID */}
+                    {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
+                        <div className="w-full bg-[var(--store-bg)] flex justify-center py-4 md:py-8 px-4 md:px-8 border-b border-[var(--store-border)]">
+                            <div className="w-full max-w-[1500px]">
+                                <div className={`hidden md:grid gap-4 items-stretch ${bentoPromos.length > 0 ? 'grid-cols-12' : 'grid-cols-1'}`}>
+                                    <div
+                                        className={`relative overflow-hidden bg-[var(--store-surface)] border-[var(--store-border)] ${bentoPromos.length > 0 ? 'col-span-8 aspect-[16/5]' : 'col-span-full aspect-[16/5]'}`}
+                                        style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}
+                                    >
+                                        <Image src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)} alt="Hero" fill className="object-cover object-center" priority />
+                                        <HeroInteractiveCtaOverlay />
+                                    </div>
 
-                                {bentoPromos.length > 0 && (
-                                    <div className={`col-span-4 h-full ${bentoPromos.length === 1 ? 'flex flex-col' : 'grid grid-rows-2 gap-4'}`}>
-                                        {bentoPromos.map((promo: any) => {
-                                            const isSinglePromo = bentoPromos.length === 1;
-                                            const textColor = promo.text_color || '#ffffff';
+                                    {bentoPromos.length > 0 && (
+                                        <div className={`col-span-4 h-full ${bentoPromos.length === 1 ? 'flex flex-col' : 'grid grid-rows-2 gap-4'}`}>
+                                            {bentoPromos.map((promo: any) => {
+                                                const isSinglePromo = bentoPromos.length === 1;
+                                                const textColor = promo.text_color || '#ffffff';
 
-                                            return (
-                                                <div
-                                                    key={promo.id}
-                                                    className={`relative overflow-hidden bg-[var(--store-surface)] border-[var(--store-border)] flex flex-col justify-between group cursor-pointer transition-all duration-300 ${isSinglePromo ? 'flex-1 p-6 lg:p-8' : 'p-5 lg:p-6 h-full'}`}
-                                                    style={{
-                                                        borderRadius: 'var(--radius-card)',
-                                                        borderWidth: 'var(--border-width-ui)',
-                                                        boxShadow: 'var(--shadow-ui)',
-                                                        backgroundColor: promo.bg_color || 'var(--store-surface)'
-                                                    }}
-                                                    onClick={() => window.scrollTo({ top: 500, behavior: 'smooth' })}
-                                                >
-                                                    {isSinglePromo ? (
-                                                        <>
-                                                            <div className="relative z-10">
-                                                                {promo.tagline && (
-                                                                    <span className="text-[10px] lg:text-xs font-bold uppercase tracking-widest mb-1.5 block" style={{ color: textColor, opacity: 0.85 }}>
-                                                                        {promo.tagline}
-                                                                    </span>
-                                                                )}
-                                                                <h4 className="text-2xl lg:text-3xl font-black leading-tight tracking-tight line-clamp-2" style={{ color: textColor }}>
-                                                                    {promo.title}
-                                                                </h4>
-                                                            </div>
-
-                                                            {promo.image_url && (
-                                                                <div className="relative flex-1 w-full h-full min-h-[180px] my-auto flex items-center justify-center overflow-hidden">
-                                                                    <div className="relative w-full h-full flex items-center justify-center">
-                                                                        <Image
-                                                                            src={getOptimizedUrl(promo.image_url)}
-                                                                            alt={promo.title}
-                                                                            fill
-                                                                            sizes="(max-width: 1024px) 33vw, 25vw"
-                                                                            className="object-contain object-center inset-0 m-auto p-2 transition-transform duration-500 ease-out group-hover:scale-105 drop-shadow-xl"
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            <div
-                                                                className="relative z-10 self-start px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 border transition-all duration-300 backdrop-blur-md hover:scale-105"
-                                                                style={{
-                                                                    color: textColor,
-                                                                    borderColor: `${textColor}40`,
-                                                                    backgroundColor: `${textColor}15`
-                                                                }}
-                                                            >
-                                                                Ver Oferta <ArrowRight size={12} />
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <div className="flex items-center justify-between gap-4 h-full relative z-10">
-                                                            <div className="flex flex-col justify-between h-full flex-1 min-w-0">
-                                                                <div>
+                                                return (
+                                                    <div
+                                                        key={promo.id}
+                                                        className={`relative overflow-hidden bg-[var(--store-surface)] border-[var(--store-border)] flex flex-col justify-between group cursor-pointer transition-all duration-300 ${isSinglePromo ? 'flex-1 p-6 lg:p-8' : 'p-5 lg:p-6 h-full'}`}
+                                                        style={{
+                                                            borderRadius: 'var(--radius-card)',
+                                                            borderWidth: 'var(--border-width-ui)',
+                                                            boxShadow: 'var(--shadow-ui)',
+                                                            backgroundColor: promo.bg_color || 'var(--store-surface)'
+                                                        }}
+                                                        onClick={() => window.scrollTo({ top: 500, behavior: 'smooth' })}
+                                                    >
+                                                        {isSinglePromo ? (
+                                                            <>
+                                                                <div className="relative z-10">
                                                                     {promo.tagline && (
-                                                                        <span className="text-[9px] lg:text-[10px] font-bold uppercase tracking-widest mb-1 block truncate" style={{ color: textColor, opacity: 0.85 }}>
+                                                                        <span className="text-[10px] lg:text-xs font-bold uppercase tracking-widest mb-1.5 block" style={{ color: textColor, opacity: 0.85 }}>
                                                                             {promo.tagline}
                                                                         </span>
                                                                     )}
-                                                                    <h4 className="text-base lg:text-xl font-black leading-tight tracking-tight line-clamp-2" style={{ color: textColor }}>
+                                                                    <h4 className="text-2xl lg:text-3xl font-black leading-tight tracking-tight line-clamp-2" style={{ color: textColor }}>
                                                                         {promo.title}
                                                                     </h4>
                                                                 </div>
+
+                                                                {promo.image_url && (
+                                                                    <div className="relative flex-1 w-full h-full min-h-[180px] my-auto flex items-center justify-center overflow-hidden">
+                                                                        <div className="relative w-full h-full flex items-center justify-center">
+                                                                            <Image
+                                                                                src={getOptimizedUrl(promo.image_url)}
+                                                                                alt={promo.title}
+                                                                                fill
+                                                                                sizes="(max-width: 1024px) 33vw, 25vw"
+                                                                                className="object-contain object-center inset-0 m-auto p-2 transition-transform duration-500 ease-out group-hover:scale-105 drop-shadow-xl"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
                                                                 <div
-                                                                    className="mt-3 self-start px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 border transition-all duration-300 backdrop-blur-md"
+                                                                    className="relative z-10 self-start px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 border transition-all duration-300 backdrop-blur-md hover:scale-105"
                                                                     style={{
                                                                         color: textColor,
                                                                         borderColor: `${textColor}40`,
                                                                         backgroundColor: `${textColor}15`
                                                                     }}
                                                                 >
-                                                                    Ver Oferta <ArrowRight size={11} />
+                                                                    Ver Oferta <ArrowRight size={12} />
                                                                 </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="flex items-center justify-between gap-4 h-full relative z-10">
+                                                                <div className="flex flex-col justify-between h-full flex-1 min-w-0">
+                                                                    <div>
+                                                                        {promo.tagline && (
+                                                                            <span className="text-[9px] lg:text-[10px] font-bold uppercase tracking-widest mb-1 block truncate" style={{ color: textColor, opacity: 0.85 }}>
+                                                                                {promo.tagline}
+                                                                            </span>
+                                                                        )}
+                                                                        <h4 className="text-base lg:text-xl font-black leading-tight tracking-tight line-clamp-2" style={{ color: textColor }}>
+                                                                            {promo.title}
+                                                                        </h4>
+                                                                    </div>
+                                                                    <div
+                                                                        className="mt-3 self-start px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center gap-1 border transition-all duration-300 backdrop-blur-md"
+                                                                        style={{
+                                                                            color: textColor,
+                                                                            borderColor: `${textColor}40`,
+                                                                            backgroundColor: `${textColor}15`
+                                                                        }}
+                                                                    >
+                                                                        Ver Oferta <ArrowRight size={11} />
+                                                                    </div>
+                                                                </div>
+
+                                                                {promo.image_url && (
+                                                                    <div className="relative w-28 h-full min-h-[90px] shrink-0 flex items-center justify-center overflow-hidden">
+                                                                        <Image
+                                                                            src={getOptimizedUrl(promo.image_url)}
+                                                                            alt={promo.title}
+                                                                            fill
+                                                                            sizes="140px"
+                                                                            className="object-contain object-center inset-0 m-auto p-1 transition-transform duration-500 ease-out group-hover:scale-105 drop-shadow-md"
+                                                                        />
+                                                                    </div>
+                                                                )}
                                                             </div>
-
-                                                            {promo.image_url && (
-                                                                <div className="relative w-28 h-full min-h-[90px] shrink-0 flex items-center justify-center overflow-hidden">
-                                                                    <Image
-                                                                        src={getOptimizedUrl(promo.image_url)}
-                                                                        alt={promo.title}
-                                                                        fill
-                                                                        sizes="140px"
-                                                                        className="object-contain object-center inset-0 m-auto p-1 transition-transform duration-500 ease-out group-hover:scale-105 drop-shadow-md"
-                                                                    />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className={`block md:hidden w-full relative ${mobileAspectClass} overflow-hidden bg-[var(--store-surface)]`} style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}>
-                                <Image src={getOptimizedUrl(liveTheme.layout?.hero_mobile_url || props.store.hero_url)} alt="Hero Mobile" fill className="object-cover object-center" priority />
-                                <HeroInteractiveCtaOverlay />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* 4. CINTILLO DE INSIGNIAS DE CONFIANZA (Solo si fueron personalizadas por la tienda) */}
-                {hasCustomTrustBadges && (
-                    <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)]">
-                        <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-5 md:py-6 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-                            {rawTrustBadges.map((badge: any) => (
-                                <div key={badge.id} className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
-                                    <div className="p-2.5 bg-[var(--store-bg)] rounded-full text-[var(--store-primary)] border border-[var(--store-border)]/50 shrink-0">
-                                        <TrustIcon name={badge.icon} className="w-5 h-5 md:w-6 md:h-6" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <h4 className="font-bold text-[var(--store-text-main)] text-xs md:text-sm tracking-tight">{badge.title}</h4>
-                                        <p className="text-[10px] md:text-xs text-[var(--store-surface-text)] font-medium leading-snug mt-0.5">{badge.description}</p>
-                                    </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
+
+                                <div className={`block md:hidden w-full relative ${mobileAspectClass} overflow-hidden bg-[var(--store-surface)]`} style={{ borderRadius: 'var(--radius-card)', borderWidth: 'var(--border-width-ui)', boxShadow: 'var(--shadow-ui)' }}>
+                                    <Image src={getOptimizedUrl(liveTheme.layout?.hero_mobile_url || props.store.hero_url)} alt="Hero Mobile" fill className="object-cover object-center" priority />
+                                    <HeroInteractiveCtaOverlay />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 4. CINTILLO DE INSIGNIAS DE CONFIANZA (Solo si fueron personalizadas por la tienda) */}
+                    {hasCustomTrustBadges && (
+                        <div className="bg-[var(--store-surface)] border-b border-[var(--store-border)]">
+                            <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-5 md:py-6 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+                                {rawTrustBadges.map((badge: any) => (
+                                    <div key={badge.id} className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
+                                        <div className="p-2.5 bg-[var(--store-bg)] rounded-full text-[var(--store-primary)] border border-[var(--store-border)]/50 shrink-0">
+                                            <TrustIcon name={badge.icon} className="w-5 h-5 md:w-6 md:h-6" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <h4 className="font-bold text-[var(--store-text-main)] text-xs md:text-sm tracking-tight">{badge.title}</h4>
+                                            <p className="text-[10px] md:text-xs text-[var(--store-surface-text)] font-medium leading-snug mt-0.5">{badge.description}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 5. DIRECTORIO DE CATEGORÍAS (BENTO THUMBNAILS) */}
+                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-6 md:py-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg md:text-xl font-black text-[var(--store-text-main)] tracking-tight">Explorar por Categoría</h3>
+                        </div>
+                        <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-4 snap-x snap-mandatory px-1">
+                            {props.categories.map((cat) => {
+                                const isAll = cat === 'Todos';
+                                const imgUrl = categoryImages[cat];
+                                const isActive = props.selectedCategory === cat;
+
+                                return (
+                                    <button
+                                        key={cat}
+                                        type="button"
+                                        onClick={() => { props.setSelectedCategory(cat); window.scrollTo({ top: 600, behavior: 'smooth' }); }}
+                                        className="shrink-0 snap-start flex flex-col items-center gap-2.5 group outline-none cursor-pointer"
+                                    >
+                                        <div
+                                            className={`w-20 h-20 md:w-28 md:h-28 flex items-center justify-center overflow-hidden transition-all duration-300 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] ${isActive ? 'ring-2 ring-[var(--store-primary)] ring-offset-2 ring-offset-[var(--store-bg)]' : 'hover:border-[var(--store-primary)]/50'}`}
+                                            style={{ borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-ui)' }}
+                                        >
+                                            {isAll ? (
+                                                <LayoutGrid size={28} className="text-[var(--store-text-main)] opacity-70 group-hover:opacity-100 transition-opacity" />
+                                            ) : imgUrl ? (
+                                                <div className="relative w-full h-full">
+                                                    <Image src={getOptimizedUrl(imgUrl)} alt={cat} fill sizes="120px" className={`object-cover transition-transform duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+                                                </div>
+                                            ) : (
+                                                <span className="font-black text-[var(--store-text-main)] opacity-30 uppercase text-xs md:text-sm tracking-widest">{cat.substring(0, 3)}</span>
+                                            )}
+                                        </div>
+                                        <span className={`text-[10px] md:text-xs text-center leading-tight transition-colors w-20 md:w-28 truncate ${isActive ? 'font-black text-[var(--store-primary)]' : 'font-bold text-[var(--store-text-main)] group-hover:text-[var(--store-primary)]'}`}>
+                                            {cat}
+                                        </span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
-                )}
 
-                {/* 5. DIRECTORIO DE CATEGORÍAS (BENTO THUMBNAILS) */}
-                <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-6 md:py-8">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg md:text-xl font-black text-[var(--store-text-main)] tracking-tight">Explorar por Categoría</h3>
-                    </div>
-                    <div className="flex gap-4 md:gap-6 overflow-x-auto no-scrollbar pb-4 snap-x snap-mandatory px-1">
-                        {props.categories.map((cat) => {
-                            const isAll = cat === 'Todos';
-                            const imgUrl = categoryImages[cat];
-                            const isActive = props.selectedCategory === cat;
+                    <div className="w-full h-px bg-[var(--store-border)]" />
+                </>
+            );
+        }
 
-                            return (
-                                <button
-                                    key={cat}
-                                    type="button"
-                                    onClick={() => { props.setSelectedCategory(cat); window.scrollTo({ top: 600, behavior: 'smooth' }); }}
-                                    className="shrink-0 snap-start flex flex-col items-center gap-2.5 group outline-none cursor-pointer"
-                                >
-                                    <div
-                                        className={`w-20 h-20 md:w-28 md:h-28 flex items-center justify-center overflow-hidden transition-all duration-300 bg-[var(--store-surface)] border-[length:var(--border-width-ui)] border-[var(--store-border)] ${isActive ? 'ring-2 ring-[var(--store-primary)] ring-offset-2 ring-offset-[var(--store-bg)]' : 'hover:border-[var(--store-primary)]/50'}`}
-                                        style={{ borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-ui)' }}
-                                    >
-                                        {isAll ? (
-                                            <LayoutGrid size={28} className="text-[var(--store-text-main)] opacity-70 group-hover:opacity-100 transition-opacity" />
-                                        ) : imgUrl ? (
-                                            <div className="relative w-full h-full">
-                                                <Image src={getOptimizedUrl(imgUrl)} alt={cat} fill sizes="120px" className={`object-cover transition-transform duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-                                            </div>
-                                        ) : (
-                                            <span className="font-black text-[var(--store-text-main)] opacity-30 uppercase text-xs md:text-sm tracking-widest">{cat.substring(0, 3)}</span>
-                                        )}
-                                    </div>
-                                    <span className={`text-[10px] md:text-xs text-center leading-tight transition-colors w-20 md:w-28 truncate ${isActive ? 'font-black text-[var(--store-primary)]' : 'font-bold text-[var(--store-text-main)] group-hover:text-[var(--store-primary)]'}`}>
-                                        {cat}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                <div className="w-full h-px bg-[var(--store-border)]" />
-            </>
-        );
-    }
-
-    // ==========================================
-    // 🌟 RENDERIZADO: TEMA 1 - PREZISO UNIVERSAL (CLASSIC)
-    // ==========================================
-    return (
-        <>
-            <RestaurantScheduleBanner
-                storeHours={props.store.store_hours}
-                storeType={props.store.store_type}
-            />
-
-           {/* 1. TOP BAR PRIMARIA (Ticker Dinámico Alimentado por Datos Reales) */}
-            <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-3.5 md:px-8 py-2 flex items-center justify-between gap-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider md:tracking-widest z-50 relative">
-                <div className="hidden md:block md:flex-1"></div>
-
-                <ClassicTrustTicker
-                    announcements={realAnnouncements}
-                    className="md:flex-[2]"
+        // ==========================================
+        // 🌟 RENDERIZADO: TEMA 1 - PREZISO UNIVERSAL (CLASSIC)
+        // ==========================================
+        return (
+            <>
+                <RestaurantScheduleBanner
+                    storeHours={props.store.store_hours}
+                    storeType={props.store.store_type}
                 />
 
-                <div className="shrink-0 md:flex-1 flex justify-end pl-2">
-                    <button
-                        onClick={() => props.setIsRateModalOpen(true)}
-                        className="flex items-center gap-1.5 md:gap-2 hover:opacity-70 transition-opacity active:scale-95 group tracking-normal"
-                    >
-                        <span className="hidden sm:block opacity-80 tracking-wider">{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}</span>
-                        <span className="sm:hidden opacity-80 tracking-wider">{props.isEur ? 'EUR' : 'BCV'}</span>
-                        <div className="h-2.5 md:h-3 w-px bg-[var(--store-primary-text)]/40"></div>
-                        <div className="flex items-baseline pt-px border-b border-[var(--store-primary-text)]/30 group-hover:border-[var(--store-primary-text)]/70 transition-colors pb-px leading-none">
-                            <span className="mr-0.5 select-none font-sans text-[9px] md:text-[10px] opacity-80">
-                                Bs.
-                            </span>
-                            <span className="tabular-nums text-[11px] md:text-xs tracking-tight">
-                                {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}
-                            </span>
-                        </div>
-                    </button>
-                </div>
-            </div>
+                {/* 1. TOP BAR PRIMARIA (Ticker Dinámico Alimentado por Datos Reales) */}
+                <div className="bg-[var(--store-primary)] text-[var(--store-primary-text)] px-3.5 md:px-8 py-2 flex items-center justify-between gap-2 text-[9px] md:text-[10px] font-bold uppercase tracking-wider md:tracking-widest z-50 relative">
+                    <div className="hidden md:block md:flex-1"></div>
 
-            {/* 2. DESKTOP: HEADER STICKY FLUIDO (Hijo directo del fragmento: flota en todo el catálogo) */}
-            <div className={`hidden md:block sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/30 transition-transform duration-300 ease-out will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-                <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 md:py-4 flex items-center justify-between gap-8">
-                    <LogoBlock />
-                    <div className="flex-1 max-w-2xl xl:max-w-3xl justify-center flex">
-                        {renderSearchBlock(false, 'w-full')}
+                    <ClassicTrustTicker
+                        announcements={realAnnouncements}
+                        className="md:flex-[2]"
+                    />
+
+                    <div className="shrink-0 md:flex-1 flex justify-end pl-2">
+                        <button
+                            onClick={() => props.setIsRateModalOpen(true)}
+                            className="flex items-center gap-1.5 md:gap-2 hover:opacity-70 transition-opacity active:scale-95 group tracking-normal"
+                        >
+                            <span className="hidden sm:block opacity-80 tracking-wider">{props.isEur ? 'Tasa EUR' : 'Tasa BCV'}</span>
+                            <span className="sm:hidden opacity-80 tracking-wider">{props.isEur ? 'EUR' : 'BCV'}</span>
+                            <div className="h-2.5 md:h-3 w-px bg-[var(--store-primary-text)]/40"></div>
+                            <div className="flex items-baseline pt-px border-b border-[var(--store-primary-text)]/30 group-hover:border-[var(--store-primary-text)]/70 transition-colors pb-px leading-none">
+                                <span className="mr-0.5 select-none font-sans text-[9px] md:text-[10px] opacity-80">
+                                    Bs.
+                                </span>
+                                <span className="tabular-nums text-[11px] md:text-xs tracking-tight">
+                                    {Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(props.activeRate)}
+                                </span>
+                            </div>
+                        </button>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
+                </div>
+
+                {/* 2. DESKTOP: HEADER STICKY FLUIDO (Hijo directo del fragmento: flota en todo el catálogo) */}
+                <div className={`hidden md:block sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/30 transition-transform duration-300 ease-out will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-3.5 md:py-4 flex items-center justify-between gap-8">
+                        <LogoBlock />
+                        <div className="flex-1 max-w-2xl xl:max-w-3xl justify-center flex">
+                            {renderSearchBlock(false, 'w-full')}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                            <IconsBlock />
+                        </div>
+                    </div>
+                    <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-2.5 pt-1 flex justify-center border-t border-[var(--store-border)]/20">
+                        <CategoriesBlock />
+                    </div>
+                </div>
+
+                {/* 3. MÓVIL: FILA DE LOGO E ICONOS (Flujo natural: desaparece al hacer scroll) */}
+                <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[var(--store-bg)] relative z-30">
+                    <LogoBlock />
+                    <div className="flex items-center gap-1.5">
                         <IconsBlock />
                     </div>
                 </div>
-                <div className="max-w-[1500px] mx-auto px-4 md:px-8 pb-2.5 pt-1 flex justify-center border-t border-[var(--store-border)]/20">
-                    <CategoriesBlock />
-                </div>
-            </div>
 
-            {/* 3. MÓVIL: FILA DE LOGO E ICONOS (Flujo natural: desaparece al hacer scroll) */}
-            <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[var(--store-bg)] relative z-30">
-                <LogoBlock />
-                <div className="flex items-center gap-1.5">
-                    <IconsBlock />
-                </div>
-            </div>
-
-           {/* 4. HERO BANNER (100% Nítido, Sin Degradado Inferior y Sin Recorte Superior) */}
-            {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
-                <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden relative z-20">
-                    <div className="relative w-full">
-                        {/* Versión Desktop */}
-                        {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
-                            <div className="hidden md:block w-full">
-                                <Image
-                                    src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)}
-                                    alt="Banner de escritorio"
-                                    width={1920}
-                                    height={600}
-                                    className="w-full h-auto block"
-                                    priority
-                                />
-                            </div>
-                        )}
-
-                        {/* Versión Móvil (Proporción 4:5 o 3:2 íntegra de arriba a abajo) */}
-                        <div className="block md:hidden w-full">
-                            {liveTheme.layout?.hero_mobile_url ? (
-                                <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
+                {/* 4. HERO BANNER (100% Nítido, Sin Degradado Inferior y Sin Recorte Superior) */}
+                {(liveTheme.layout?.hero_desktop_url || props.store.hero_url || liveTheme.layout?.hero_mobile_url) && (
+                    <div className="w-full bg-[var(--store-bg)] flex justify-center overflow-hidden relative z-20">
+                        <div className="relative w-full">
+                            {/* Versión Desktop */}
+                            {(liveTheme.layout?.hero_desktop_url || props.store.hero_url) && (
+                                <div className="hidden md:block w-full">
                                     <Image
-                                        src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
-                                        alt="Portada móvil"
-                                        fill
-                                        className="object-cover object-center"
+                                        src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)}
+                                        alt="Banner de escritorio"
+                                        width={1920}
+                                        height={600}
+                                        className="w-full h-auto block"
                                         priority
                                     />
                                 </div>
-                            ) : (liveTheme.layout?.hero_desktop_url || props.store.hero_url) ? (
-                                <Image
-                                    src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)}
-                                    alt="Banner móvil legacy"
-                                    width={1920}
-                                    height={600}
-                                    className="w-full h-auto block"
-                                    priority
-                                />
-                            ) : null}
+                            )}
+
+                            {/* Versión Móvil (Proporción 4:5 o 3:2 íntegra de arriba a abajo) */}
+                            <div className="block md:hidden w-full">
+                                {liveTheme.layout?.hero_mobile_url ? (
+                                    <div className={`relative w-full ${mobileAspectClass} overflow-hidden`}>
+                                        <Image
+                                            src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
+                                            alt="Portada móvil"
+                                            fill
+                                            className="object-cover object-center"
+                                            priority
+                                        />
+                                    </div>
+                                ) : (liveTheme.layout?.hero_desktop_url || props.store.hero_url) ? (
+                                    <Image
+                                        src={getOptimizedUrl(liveTheme.layout?.hero_desktop_url || props.store.hero_url)}
+                                        alt="Banner móvil legacy"
+                                        width={1920}
+                                        height={600}
+                                        className="w-full h-auto block"
+                                        priority
+                                    />
+                                ) : null}
+                            </div>
+                            <HeroInteractiveCtaOverlay />
                         </div>
-                        <HeroInteractiveCtaOverlay />
+                    </div>
+                )}
+
+                {/* 5. MÓVIL: STICKY BUSCADOR Y CATEGORÍAS (Hijo directo del fragmento: flota en todo el catálogo) */}
+                <div className={`block md:hidden sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/30 transition-transform duration-300 ease-out will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+                    <div className="flex w-full px-4 pt-3 pb-1">
+                        {renderSearchBlock(false, 'w-full')}
+                    </div>
+                    <div className="max-w-[1500px] mx-auto px-4 pb-2.5 pt-1 flex justify-center">
+                        <CategoriesBlock />
                     </div>
                 </div>
-            )}
-
-          {/* 5. MÓVIL: STICKY BUSCADOR Y CATEGORÍAS (Hijo directo del fragmento: flota en todo el catálogo) */}
-            <div className={`block md:hidden sticky top-0 z-40 bg-[var(--store-bg)]/95 backdrop-blur-xl border-b border-[var(--store-border)]/30 transition-transform duration-300 ease-out will-change-transform ${props.isStickyVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-                <div className="flex w-full px-4 pt-3 pb-1">
-                    {renderSearchBlock(false, 'w-full')}
-                </div>
-                <div className="max-w-[1500px] mx-auto px-4 pb-2.5 pt-1 flex justify-center">
-                    <CategoriesBlock />
-                </div>
-            </div>
-        </>
-    );
+            </>
+        );
     };
 
     return (
