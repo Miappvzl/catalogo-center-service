@@ -546,7 +546,7 @@ export default function AiBannerStudioModal({
         if (Math.abs(nextX - 50) < 3) nextX = 50
         if (Math.abs(nextY - 50) < 3) nextY = 50
 
-       const clampedX = Math.max(0, Math.min(100, Math.round(nextX)))
+        const clampedX = Math.max(0, Math.min(100, Math.round(nextX)))
         const clampedY = Math.max(0, Math.min(100, Math.round(nextY)))
 
         const autoAlign: HeroCtaAlignment =
@@ -920,7 +920,7 @@ export default function AiBannerStudioModal({
       const mobileFramingChanged =
         mobileFitMode === 'contain_blur' ||
         (ctaConfig.mobile_banner_ratio || 'aspect-[9/10]') !==
-          (currentCtaConfig?.mobile_banner_ratio || 'aspect-[9/10]') ||
+        (currentCtaConfig?.mobile_banner_ratio || 'aspect-[9/10]') ||
         mobileFocal.x !== (currentCtaConfig?.mobile_focal_x ?? 50) ||
         mobileFocal.y !== (currentCtaConfig?.mobile_focal_y ?? 50)
 
@@ -978,7 +978,7 @@ export default function AiBannerStudioModal({
       setIsSaving(false)
     }
   }
- // Renderizador con unidades proporcionales al contenedor (cqw): 100% idéntico a StoreHeader.tsx
+  // Renderizador con unidades proporcionales al contenedor (cqw): 100% idéntico a StoreHeader.tsx
   const renderPreviewButton = (
     btn: HeroButtonItemConfig,
     vpCfg: HeroViewportCtaConfig,
@@ -997,16 +997,16 @@ export default function AiBannerStudioModal({
       btn.radius === 'pill'
         ? 'rounded-full'
         : btn.radius === 'rounded'
-        ? 'rounded-[10px]'
-        : 'rounded-none'
+          ? 'rounded-[10px]'
+          : 'rounded-none'
 
     const sColor = btn.shadow_color || 'rgba(0, 0, 0, 0.35)'
     const shadowStyle =
       btn.shadow === 'crisp'
         ? `0 6px 20px -2px ${sColor}, 0 2px 6px -1px ${sColor}`
         : btn.shadow === 'subtle'
-        ? `0 3px 10px -1px ${sColor}`
-        : 'none'
+          ? `0 3px 10px -1px ${sColor}`
+          : 'none'
 
     if (btn.fill_style === 'minimal_underline') {
       return (
@@ -1073,33 +1073,33 @@ export default function AiBannerStudioModal({
       ? posX > 64
         ? 'flex-col items-end'
         : posX >= 36
-        ? 'flex-col items-center'
-        : 'flex-col items-start'
+          ? 'flex-col items-center'
+          : 'flex-col items-start'
       : posX > 64
-      ? 'flex-row flex-nowrap items-center justify-end'
-      : posX >= 36
-      ? 'flex-row flex-nowrap items-center justify-center'
-      : 'flex-row flex-nowrap items-center justify-start'
+        ? 'flex-row flex-nowrap items-center justify-end'
+        : posX >= 36
+          ? 'flex-row flex-nowrap items-center justify-center'
+          : 'flex-row flex-nowrap items-center justify-start'
 
     const sColor = vpCfg.description_shadow_color || 'rgba(0,0,0,0.55)'
     const textShadow =
       vpCfg.description_shadow === 'crisp'
         ? `0 2px 12px ${sColor}, 0 1px 3px ${sColor}`
         : vpCfg.description_shadow === 'subtle'
-        ? `0 1px 6px ${sColor}`
-        : 'none'
+          ? `0 1px 6px ${sColor}`
+          : 'none'
 
     const descFontCqw = isMobileStage
       ? vpCfg.description_size === 'lg'
         ? '4.4cqw'
         : vpCfg.description_size === 'sm'
-        ? '3.1cqw'
-        : '3.6cqw'
+          ? '3.1cqw'
+          : '3.6cqw'
       : vpCfg.description_size === 'lg'
-      ? '2.5cqw'
-      : vpCfg.description_size === 'sm'
-      ? '1.5cqw'
-      : '1.95cqw'
+        ? '2.5cqw'
+        : vpCfg.description_size === 'sm'
+          ? '1.5cqw'
+          : '1.95cqw'
 
     const hudPositionClass = posY < 22 ? '-bottom-9' : '-top-9'
 
@@ -1129,11 +1129,10 @@ export default function AiBannerStudioModal({
           >
             {/* Marco punteado flotante con 0px de impacto en el layout */}
             <div
-              className={`absolute -inset-2 rounded-2xl border border-dashed pointer-events-none transition-colors ${
-                interactionMode
+              className={`absolute -inset-2 rounded-2xl border border-dashed pointer-events-none transition-colors ${interactionMode
                   ? 'border-white bg-black/15'
                   : 'border-white/85'
-              }`}
+                }`}
             />
 
             {/* Barra de acciones flotante */}
@@ -1395,7 +1394,7 @@ export default function AiBannerStudioModal({
                   {activeVpConfig.enabled && (
                     <>
 
-                    {/* 1. ASISTENCIA DE CENTRADO REVERSIBLE (Tocar de nuevo desactiva el centrado) */}
+                      {/* 1. ASISTENCIA DE CENTRADO REVERSIBLE (Tocar de nuevo desactiva el centrado) */}
                       <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/40 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <Move size={13} className="text-neutral-500 shrink-0" />
@@ -1414,11 +1413,10 @@ export default function AiBannerStudioModal({
                                 alignment: isCurrentlyCenteredX ? 'left' : 'center'
                               })
                             }}
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors cursor-pointer ${
-                              (activeVpConfig.pos_x ?? 50) === 50
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors cursor-pointer ${(activeVpConfig.pos_x ?? 50) === 50
                                 ? 'border-neutral-900 bg-neutral-900 text-white'
                                 : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-900'
-                            }`}
+                              }`}
                             title="Toca para centrar horizontalmente o vuelve a tocar para desactivar"
                           >
                             Centrar ↔
@@ -1432,11 +1430,10 @@ export default function AiBannerStudioModal({
                                 pos_y: isCurrentlyMiddleY ? 78 : 50
                               })
                             }}
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors cursor-pointer ${
-                              (activeVpConfig.pos_y ?? 78) === 50
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-colors cursor-pointer ${(activeVpConfig.pos_y ?? 78) === 50
                                 ? 'border-neutral-900 bg-neutral-900 text-white'
                                 : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-900'
-                            }`}
+                              }`}
                             title="Toca para poner en el medio o vuelve a tocar para bajarlo"
                           >
                             Medio ↕

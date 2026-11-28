@@ -59,10 +59,10 @@ const CategoryPill = ({
                 ? (active
                     ? 'font-semibold text-[var(--store-text-main)] border-b-2 border-[var(--store-text-main)]'
                     : 'font-medium text-[var(--store-surface-text)] border-b-2 border-transparent hover:text-[var(--store-text-main)]')
-               : isPillNav
-    ? (active
-        ? 'font-semibold bg-[var(--store-primary)] text-[var(--store-primary-text)] border border-[var(--store-primary)] rounded-[var(--radius-btn)] shadow-xs'
-        : 'font-medium bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)] rounded-[var(--radius-btn)] shadow-xs hover:text-[var(--store-text-main)] hover:border-[var(--store-primary)]/50 hover:bg-[var(--store-bg)]')
+                : isPillNav
+                    ? (active
+                        ? 'font-semibold bg-[var(--store-primary)] text-[var(--store-primary-text)] border border-[var(--store-primary)] rounded-[var(--radius-btn)] shadow-xs'
+                        : 'font-medium bg-[var(--store-surface)] text-[var(--store-surface-text)] border border-[var(--store-border)] rounded-[var(--radius-btn)] shadow-xs hover:text-[var(--store-text-main)] hover:border-[var(--store-primary)]/50 hover:bg-[var(--store-bg)]')
                     : (active
                         ? 'font-semibold bg-[var(--store-primary)] text-[var(--store-primary-text)] border-[length:var(--border-width-ui)] border-[var(--store-primary)] rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)]'
                         : 'font-medium bg-[var(--store-surface)] text-[var(--store-text-main)] border-[length:var(--border-width-ui)] border-[var(--store-border)] rounded-[var(--radius-btn)] shadow-[var(--shadow-ui)] hover:border-[var(--store-primary)]/50')
@@ -695,7 +695,7 @@ const CategoriesBlock = ({ isMinimal = false }: { isMinimal?: boolean }) => {
                         <button onClick={() => props.scrollCategories('left')} className="pointer-events-auto p-2 rounded-[var(--radius-btn)] border-[length:var(--border-width-ui)] bg-[var(--store-surface)] shadow-[var(--shadow-ui)] text-[var(--store-text-main)] active:scale-95 transition-all duration-150"><ChevronLeft size={14} strokeWidth={2.5} /></button>
                     </div>
 
-                   <div
+                    <div
                         ref={props.categoryScrollRef}
                         onScroll={props.handleCategoryScroll}
                         className="w-full overflow-x-auto no-scrollbar py-2"
@@ -836,8 +836,8 @@ const MobileMenu = () => {
                                                     setIsMobileMenuOpen(false);
                                                 }}
                                                 className={`w-full px-4 py-3 rounded-full flex items-center justify-between text-left transition-all duration-200 active:scale-[0.98] ${isActive
-                                                        ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] font-semibold shadow-xs'
-                                                        : 'text-[var(--store-text-main)] hover:bg-[var(--store-surface)] font-medium'
+                                                    ? 'bg-[var(--store-primary)] text-[var(--store-primary-text)] font-semibold shadow-xs'
+                                                    : 'text-[var(--store-text-main)] hover:bg-[var(--store-surface)] font-medium'
                                                     }`}
                                             >
                                                 <span className="text-sm tracking-wide truncate pr-3">
@@ -848,8 +848,8 @@ const MobileMenu = () => {
                                                     size={15}
                                                     strokeWidth={1.75}
                                                     className={`shrink-0 transition-transform duration-200 ${isActive
-                                                            ? 'text-[var(--store-primary-text)] translate-x-0.5'
-                                                            : 'text-[var(--store-surface-text)]/50'
+                                                        ? 'text-[var(--store-primary-text)] translate-x-0.5'
+                                                        : 'text-[var(--store-surface-text)]/50'
                                                         }`}
                                                 />
                                             </button>
@@ -966,16 +966,16 @@ const MobileMenu = () => {
                                             <div className="flex items-baseline gap-4 min-w-0 pr-3">
                                                 <span
                                                     className={`font-mono text-[10px] tabular-nums shrink-0 transition-colors ${isActive
-                                                            ? 'text-[var(--store-primary)] font-bold'
-                                                            : 'text-[var(--store-surface-text)]/50 group-hover:text-[var(--store-text-main)]'
+                                                        ? 'text-[var(--store-primary)] font-bold'
+                                                        : 'text-[var(--store-surface-text)]/50 group-hover:text-[var(--store-text-main)]'
                                                         }`}
                                                 >
                                                     {(idx + 1).toString().padStart(2, '0')}
                                                 </span>
                                                 <span
                                                     className={`text-lg tracking-tight truncate transition-colors ${isActive
-                                                            ? 'font-bold text-[var(--store-text-main)]'
-                                                            : 'font-normal text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)]'
+                                                        ? 'font-bold text-[var(--store-text-main)]'
+                                                        : 'font-normal text-[var(--store-surface-text)] group-hover:text-[var(--store-text-main)]'
                                                         }`}
                                                 >
                                                     {cat}
@@ -1246,7 +1246,7 @@ function StoreHeader(props: StoreHeaderProps) {
                                                 src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                                 alt="Portada móvil"
                                                 fill
-                                               style={{ objectPosition: mobileObjectPosition }} className="object-cover"
+                                                style={{ objectPosition: mobileObjectPosition }} className="object-cover"
                                                 priority
                                             />
                                         </div>
@@ -1947,7 +1947,7 @@ function StoreHeader(props: StoreHeaderProps) {
                                             src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                             alt="Portada móvil"
                                             fill
-                                           style={{ objectPosition: mobileObjectPosition }} className="object-cover"
+                                            style={{ objectPosition: mobileObjectPosition }} className="object-cover"
                                             priority
                                         />
                                     </div>
