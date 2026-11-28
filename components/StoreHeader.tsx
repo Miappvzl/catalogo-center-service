@@ -1067,6 +1067,7 @@ function StoreHeader(props: StoreHeaderProps) {
     const liveTheme = useMemo(() => normalizeThemeConfig(props.store?.theme_config), [props.store?.theme_config]);
     const heroCta = props.store?.theme_config?.layout?.hero_cta || liveTheme.layout?.hero_cta;
     const mobileAspectClass = heroCta?.mobile_banner_ratio || 'aspect-[9/10]';
+    const mobileObjectPosition = `${heroCta?.mobile_focal_x ?? 50}% ${heroCta?.mobile_focal_y ?? 50}%`;
 
     // 💎 ANUNCIOS REALES DERIVADOS DE LA CONFIGURACIÓN DE LA TIENDA
     const realAnnouncements = useMemo(() => buildRealStoreAnnouncements(props.store), [props.store]);
@@ -1245,7 +1246,7 @@ function StoreHeader(props: StoreHeaderProps) {
                                                 src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                                 alt="Portada móvil"
                                                 fill
-                                                className="object-cover object-center"
+                                               style={{ objectPosition: mobileObjectPosition }} className="object-cover"
                                                 priority
                                             />
                                         </div>
@@ -1372,7 +1373,7 @@ function StoreHeader(props: StoreHeaderProps) {
                                                     src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                                     alt="Portada móvil"
                                                     fill
-                                                    className="object-cover object-center"
+                                                    style={{ objectPosition: mobileObjectPosition }} className="object-cover"
                                                     priority
                                                 />
                                             </div>
@@ -1946,7 +1947,7 @@ function StoreHeader(props: StoreHeaderProps) {
                                             src={getOptimizedUrl(liveTheme.layout.hero_mobile_url)}
                                             alt="Portada móvil"
                                             fill
-                                            className="object-cover object-center"
+                                           style={{ objectPosition: mobileObjectPosition }} className="object-cover"
                                             priority
                                         />
                                     </div>

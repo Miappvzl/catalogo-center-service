@@ -398,6 +398,7 @@ export default function AiBannerStudioModal({
   const desktopInputRef = useRef<HTMLInputElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
 
+  // 1. Reiniciar estados de carga y restaurar puntos focales al abrir el modal
   useEffect(() => {
     if (isOpen) {
       const norm = getNormalizedHeroCta(currentCtaConfig)
@@ -408,6 +409,16 @@ export default function AiBannerStudioModal({
       setHasDescriptionDesktop(
         Boolean(norm.desktop?.description_text && norm.desktop.description_text.trim().length > 0)
       )
+      setMobileFocal({
+        x: typeof currentCtaConfig?.mobile_focal_x === 'number' ? currentCtaConfig.mobile_focal_x : 50,
+        y: typeof currentCtaConfig?.mobile_focal_y === 'number' ? currentCtaConfig.mobile_focal_y : 50
+      })
+      setDesktopFocal({
+        x: typeof currentCtaConfig?.desktop_focal_x === 'number' ? currentCtaConfig.desktop_focal_x : 50,
+        y: typeof currentCtaConfig?.desktop_focal_y === 'number' ? currentCtaConfig.desktop_focal_y : 50
+      })
+      setHasNewDesktopImage(false)
+      setHasNewMobileImage(false)
       setActiveTab(initialSection)
     }
   }, [isOpen, currentCtaConfig, initialSection])
@@ -887,7 +898,12 @@ export default function AiBannerStudioModal({
       let desktopFile: File | null = null
       let mobileFile: File | null = null
 
-      if (hasNewDesktopImage && desktopSourceImg) {
+      const desktopFramingChanged =
+        desktopFitMode === 'contain_blur' ||
+        desktopFocal.x !== (currentCtaConfig?.desktop_focal_x ?? 50) ||
+        desktopFocal.y !== (currentCtaConfig?.desktop_focal_y ?? 50)
+
+      if ((hasNewDesktopImage || desktopFramingChanged) && desktopSourceImg) {
         desktopFile = await resizeImageToExactDimensions(
           desktopSourceImg,
           desktopTarget.width,
@@ -901,13 +917,19 @@ export default function AiBannerStudioModal({
         )
       }
 
-      // En móvil guardamos la proporción completa (1080x1350) cuando se sube una imagen nueva
-      // para que cambiar entre 9:10, 4:5, 1:1 o 3:2 jamás recorte ni pierda partes de la foto
-      if (hasNewMobileImage && mobileSourceImg) {
+      const mobileFramingChanged =
+        mobileFitMode === 'contain_blur' ||
+        (ctaConfig.mobile_banner_ratio || 'aspect-[9/10]') !==
+          (currentCtaConfig?.mobile_banner_ratio || 'aspect-[9/10]') ||
+        mobileFocal.x !== (currentCtaConfig?.mobile_focal_x ?? 50) ||
+        mobileFocal.y !== (currentCtaConfig?.mobile_focal_y ?? 50)
+
+      // 🚀 EXPORTACIÓN 1:1 CON EL LIENZO DEL MODAL (Cero doble recorte 4:5 -> 9:10)
+      if ((hasNewMobileImage || mobileFramingChanged) && mobileSourceImg) {
         mobileFile = await resizeImageToExactDimensions(
           mobileSourceImg,
-          1080,
-          1350,
+          mobileTarget.width,
+          mobileTarget.height,
           {
             mode: mobileFitMode,
             focalX: mobileFocal.x,
@@ -947,6 +969,8 @@ export default function AiBannerStudioModal({
         mobileFile,
         updatedCtaConfig: finalCta
       })
+      setHasNewDesktopImage(false)
+      setHasNewMobileImage(false)
       onClose()
     } catch {
       toast.error('No se pudieron aplicar los cambios')
