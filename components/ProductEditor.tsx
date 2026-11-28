@@ -46,7 +46,17 @@ import { revalidateAdminDashboard } from '@/app/admin/orders/action';
 interface ProductEditorProps {
     productId?: string
     rates: { usd: number, eur: number }
-    storeSettings?: { id: string, currency: string, fiscalProfile: string, storeType: string } // 🚀 AÑADIDO
+    storeSettings?: {
+        id: string
+        currency: string
+        fiscalProfile: string
+        storeType: string
+        defaultTaxActive?: boolean
+        defaultTaxPercentage?: number
+        showTaxInCatalog?: boolean
+        wholesaleConfig?: { active?: boolean, min_items?: number, discount_percentage?: number } | null
+        affiliateConfig?: { active?: boolean, buyer_discount_pct?: number, global_commission_pct?: number } | null
+    }
 }
 
 const COMMON_SIZES = ['S', 'M', 'L', 'XL', '38', '40', '42', 'Única']
@@ -253,6 +263,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         price: '' as number | '',
         penalty: '' as number | '',
         compareAt: '' as number | '',
+        cost: '' as number | '',
         status: 'active',
         shipping_badge_title: '',
         shipping_badge_desc: '',
@@ -277,8 +288,14 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         priceOverride: '' as number | '',
         penaltyOverride: '' as number | '',
         compareAtOverride: '' as number | '',
+        costOverride: '' as number | '',
         images: [] as string[]
     })
+
+    // 💎 Estados UI Mobile-First: Desplegable de Costo, Ayudas (?) y Guía "¿Qué hacer?"
+    const [isCostPanelOpen, setIsCostPanelOpen] = useState(false)
+    const [activePriceHelp, setActivePriceHelp] = useState<'base' | 'penalty' | 'compare' | null>(null)
+    const [openWhatToDoId, setOpenWhatToDoId] = useState<string | null>(null)
 
     const [hasVariants, setHasVariants] = useState(false)
     const [simpleStock, setSimpleStock] = useState<number | ''>(10)
@@ -553,7 +570,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         }
     };
 
-// 🚀 DETECTOR DE CAMPAÑAS PROMOCIONALES ACTIVAS VINCULADAS A ESTE PRODUCTO
+    // 🚀 DETECTOR DE CAMPAÑAS PROMOCIONALES ACTIVAS VINCULADAS A ESTE PRODUCTO
     const [linkedActivePromos, setLinkedActivePromos] = useState<any[]>([])
     const [isUnlinkingPromo, setIsUnlinkingPromo] = useState(false)
 
@@ -584,8 +601,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             p.promo_type === 'percentage'
                 ? Number(p.discount_percentage || 0)
                 : p.promo_type === 'bogo' && Number(p.bogo_buy) > 0
-                  ? ((Number(p.bogo_buy) - Number(p.bogo_pay)) / Number(p.bogo_buy)) * 100
-                  : 0
+                    ? ((Number(p.bogo_buy) - Number(p.bogo_pay)) / Number(p.bogo_buy)) * 100
+                    : 0
         return linkedActivePromos.reduce((best, curr) => (getEff(curr) > getEff(best) ? curr : best), linkedActivePromos[0])
     }, [linkedActivePromos])
 
@@ -625,17 +642,26 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         const listPrice = Number((cashPrice + markup).toFixed(2))
         const rawCompareAt = Number(formData.compareAt) || 0
 
+        // Costo Unitario Real: Solo se activa cuando el usuario ingresa un costo mayor a 0 (Evita el falso 100% cuando está vacío o en 0.00)
+        const rawCostNum = Number(formData.cost)
+        const hasCost = formData.cost !== '' && formData.cost !== null && formData.cost !== undefined && !isNaN(rawCostNum) && rawCostNum > 0
+        const unitCost = hasCost ? Number(rawCostNum.toFixed(2)) : null
+
         const isCompareAtValid = rawCompareAt > listPrice && listPrice > 0
         const isCompareAtInvalid = rawCompareAt > 0 && rawCompareAt <= listPrice
 
-        const suggestedCompareAt = rawCompareAt > cashPrice && markup > 0
-            ? Number((rawCompareAt + markup).toFixed(2))
-            : Number((listPrice * 1.15).toFixed(2))
+     // Precio tachado sugerido: +15% fijo sobre el precio de vitrina redondeado a entero (No salta mientras el usuario escribe)
+        const suggestedCompareAt = Math.ceil(listPrice * 1.15)
 
-        // Impacto si el producto está dentro de una Campaña Porcentual Activa
+        // Impacto si el producto está dentro de una Campaña Activa (Porcentual o BOGO 2x1 / 3x2)
         const campaignDiscountPct =
             bestActiveCampaign && bestActiveCampaign.promo_type === 'percentage' && Number(bestActiveCampaign.discount_percentage) > 0
                 ? Number(bestActiveCampaign.discount_percentage)
+                : 0
+
+        const bogoEffectiveDiscountPct =
+            bestActiveCampaign && bestActiveCampaign.promo_type === 'bogo' && Number(bestActiveCampaign.bogo_buy) > 0 && Number(bestActiveCampaign.bogo_pay) > 0 && Number(bestActiveCampaign.bogo_buy) > Number(bestActiveCampaign.bogo_pay)
+                ? Number((((Number(bestActiveCampaign.bogo_buy) - Number(bestActiveCampaign.bogo_pay)) / Number(bestActiveCampaign.bogo_buy)) * 100).toFixed(2))
                 : 0
 
         const hasCampaignOverride = campaignDiscountPct > 0
@@ -657,25 +683,230 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
         const discountPercent = finalStoreListPrice > 0 ? Math.round((effectiveFxSavings / finalStoreListPrice) * 100) : 0
         const refBs = finalStoreListPrice * activeRate
 
+        // 1. CÁLCULO FISCAL: Solo aplica si el perfil en Configuración es Contribuyente Ordinario o Especial
+        const isTaxableStore = storeSettings?.fiscalProfile === 'ordinary' || storeSettings?.fiscalProfile === 'special'
+        const taxRatePct = isTaxableStore && !formData.is_tax_exempt ? Number(storeSettings?.defaultTaxPercentage ?? 16) : 0
+        const taxAmountOnCash = Number((cashPrice * (taxRatePct / 100)).toFixed(2))
+        const cashPriceWithTax = Number((cashPrice + taxAmountOnCash).toFixed(2))
+        const taxAmountOnList = Number((listPrice * (taxRatePct / 100)).toFixed(2))
+        const listPriceWithTax = Number((listPrice + taxAmountOnList).toFixed(2))
+
+        // 2. RENTABILIDAD SOBRE PRECIO BASE (SIN IVA)
+        const netProfitCash = unitCost !== null ? Number((cashPrice - unitCost).toFixed(2)) : null
+        const grossMarginCashPct = unitCost !== null && cashPrice > 0
+            ? Number((((cashPrice - unitCost) / cashPrice) * 100).toFixed(1))
+            : null
+        const markupOnCostPct = unitCost !== null && unitCost > 0
+            ? Number((((cashPrice - unitCost) / unitCost) * 100).toFixed(1))
+            : null
+
+        const netProfitList = unitCost !== null ? Number((listPrice - unitCost).toFixed(2)) : null
+        const grossMarginListPct = unitCost !== null && listPrice > 0
+            ? Number((((listPrice - unitCost) / listPrice) * 100).toFixed(1))
+            : null
+
+        // 3. DIAGNÓSTICO INTELIGENTE DE PÉRDIDAS CON GUÍA "¿QUÉ HACER?"
+        interface ErosionScenario {
+            id: string
+            title: string
+            summary: string
+            whatToDo: string
+            suggestedBasePrice: number | null
+            suggestedWholesalePct?: number | null
+            netRevenueUsd: number
+            profitUsd: number
+            marginPct: number
+            status: 'loss' | 'critical' | 'healthy'
+        }
+
+        const erosionScenarios: ErosionScenario[] = []
+
+        if (unitCost !== null && cashPrice > 0) {
+            const safeBasePrice20 = Math.ceil(unitCost / 0.8)
+
+            // CASO RAÍZ: Si el Precio de Venta ya es menor al costo, mostramos SOLO esta alerta raíz
+            if (cashPrice < unitCost) {
+                const lossUsd = Number((unitCost - cashPrice).toFixed(2))
+                erosionScenarios.push({
+                    id: 'base_cash_loss',
+                    title: 'Tu precio de venta es menor a tu costo',
+                    summary: `Lo vendes en $${cashPrice.toFixed(2)}, pero a ti te cuesta $${unitCost.toFixed(2)}. Pierdes $${lossUsd.toFixed(2)} en cada venta.`,
+                    whatToDo: `Para no perder dinero, sube el "1. Precio de Venta" por encima de $${unitCost.toFixed(2)} (por ejemplo a $${safeBasePrice20.toFixed(2)} para ganar un 20% libre), o revisa si escribiste mal el costo.`,
+                    suggestedBasePrice: safeBasePrice20,
+                    netRevenueUsd: cashPrice,
+                    profitUsd: -lossUsd,
+                    marginPct: -100,
+                    status: 'loss'
+                })
+            } else {
+                // Si el precio base es saludable (>= costo), auditamos si algún descuento activo perfora el costo
+                const checkDiscountChannel = (
+                    id: string,
+                    title: string,
+                    discountDesc: string,
+                    netRev: number,
+                    whatToDo: string,
+                    minSafeBasePrice: number | null = null,
+                    safeWholesalePct: number | null = null
+                ) => {
+                    const cleanRev = Number(netRev.toFixed(2))
+                    const prof = Number((cleanRev - unitCost).toFixed(2))
+                    const marg = cleanRev > 0 ? Number(((prof / cleanRev) * 100).toFixed(1)) : -100
+                    if (cleanRev < unitCost) {
+                        erosionScenarios.push({
+                            id,
+                            title,
+                            summary: `Con ${discountDesc}, recibes $${cleanRev.toFixed(2)} y pierdes $${Math.abs(prof).toFixed(2)} por unidad (tu costo es $${unitCost.toFixed(2)}).`,
+                            whatToDo,
+                            suggestedBasePrice: minSafeBasePrice,
+                            suggestedWholesalePct: safeWholesalePct,
+                            netRevenueUsd: cleanRev,
+                            profitUsd: prof,
+                            marginPct: marg,
+                            status: 'loss'
+                        })
+                    }
+                }
+
+                // Canal A: Campaña Promocional Activa (Porcentaje o BOGO)
+                if (bestActiveCampaign) {
+                    if (campaignDiscountPct > 0) {
+                        const neededBase = Math.ceil(unitCost / (1 - campaignDiscountPct / 100))
+                        checkDiscountChannel(
+                            'active_campaign',
+                            `Pérdida en campaña "${bestActiveCampaign.title}"`,
+                            `el descuento de -${campaignDiscountPct}%`,
+                            finalStoreCashPrice,
+                            `El descuento de esta campaña (-${campaignDiscountPct}%) supera tu margen de ganancia. Puedes tocar el botón "Excluir de esta campaña" aquí abajo, o subir el Precio de Venta al menos a $${neededBase.toFixed(2)}.`,
+                            neededBase
+                        )
+                    } else if (bogoEffectiveDiscountPct > 0) {
+                        const bogoUnitRev = cashPrice * (Number(bestActiveCampaign.bogo_pay) / Number(bestActiveCampaign.bogo_buy))
+                        const neededBase = Math.ceil(unitCost * (Number(bestActiveCampaign.bogo_buy) / Number(bestActiveCampaign.bogo_pay)))
+                        checkDiscountChannel(
+                            'active_bogo',
+                            `Pérdida en promoción ${bestActiveCampaign.bogo_buy}x${bestActiveCampaign.bogo_pay} "${bestActiveCampaign.title}"`,
+                            `la promoción ${bestActiveCampaign.bogo_buy}x${bestActiveCampaign.bogo_pay}`,
+                            bogoUnitRev,
+                            `En un ${bestActiveCampaign.bogo_buy}x${bestActiveCampaign.bogo_pay} entregas ${bestActiveCampaign.bogo_buy} unidades pero cobras ${bestActiveCampaign.bogo_pay}. Excluye este producto de la campaña o sube su Precio de Venta por encima de $${neededBase.toFixed(2)}.`,
+                            neededBase
+                        )
+                    }
+                }
+
+                // Canal B: Regla Mayorista (Individual o Global de la Tienda)
+                const isIndividualWholesale = formData.wholesale_active && Number(formData.wholesale_discount_pct) > 0
+                const isGlobalWholesale = !formData.wholesale_active && Boolean(storeSettings?.wholesaleConfig?.active) && Number(storeSettings?.wholesaleConfig?.discount_percentage) > 0
+                const activeWholesalePct = isIndividualWholesale
+                    ? Number(formData.wholesale_discount_pct)
+                    : isGlobalWholesale
+                        ? Number(storeSettings?.wholesaleConfig?.discount_percentage)
+                        : 0
+
+                if (activeWholesalePct > 0 && activeWholesalePct < 100) {
+                    const wholesaleRev = cashPrice * (1 - activeWholesalePct / 100)
+                    const maxSafePct = Math.max(0, Math.floor(((cashPrice - unitCost) / cashPrice) * 100))
+                    const recommendedSafeWholesalePct = Math.max(5, Math.min(15, Math.floor(maxSafePct * 0.7)))
+                    checkDiscountChannel(
+                        'wholesale',
+                        isIndividualWholesale ? 'Pérdida en tu Regla Mayorista Individual' : 'Pérdida con tu Descuento Mayorista Global',
+                        `tu descuento al mayor de -${activeWholesalePct}%`,
+                        wholesaleRev,
+                        isIndividualWholesale
+                            ? `Con tu precio actual ($${cashPrice.toFixed(2)}) y costo ($${unitCost.toFixed(2)}), el descuento al mayor máximo sin perder dinero es ${maxSafePct}%. Toca el botón para bajarlo a un ${recommendedSafeWholesalePct}% seguro.`
+                            : `Tienes un descuento al mayor global de -${activeWholesalePct}% en tu tienda. Toca el botón para asignarle a este producto una regla individual segura del ${recommendedSafeWholesalePct}%, o baja el descuento general en Configuración > Reglas de Negocio.`,
+                        null,
+                        recommendedSafeWholesalePct
+                    )
+                }
+
+                // Canal C: Programa de Afiliados / Promotores
+                if (storeSettings?.affiliateConfig?.active) {
+                    const buyerDisc = Number(storeSettings.affiliateConfig.buyer_discount_pct || 0)
+                    const commPct = Number(storeSettings.affiliateConfig.global_commission_pct || 0)
+                    if (buyerDisc + commPct > 0) {
+                        const pricePaidByBuyer = cashPrice * (1 - buyerDisc / 100)
+                        const commissionUsd = pricePaidByBuyer * (commPct / 100)
+                        const netAfterAffiliate = pricePaidByBuyer - commissionUsd
+                        checkDiscountChannel(
+                            'affiliate',
+                            'Pérdida en ventas con Código de Afiliado',
+                            `el -${buyerDisc}% al cliente y -${commPct}% de comisión al promotor`,
+                            netAfterAffiliate,
+                            `Cuando venden con código de afiliado se descuenta un ${buyerDisc}% al comprador y pagas ${commPct}% de comisión. Sube ligeramente el Precio de Venta o reduce los porcentajes de afiliados en Configuración > Reglas de Negocio.`
+                        )
+                    }
+                }
+            }
+        }
+
+        // 4. AUDITORÍA DE VARIANTES EN RIESGO
+        const variantsBelowCost = hasVariants
+            ? variants.filter(v => {
+                const vPrice = v.override_usd_price !== null && v.override_usd_price !== undefined && v.override_usd_price !== ''
+                    ? Number(v.override_usd_price)
+                    : cashPrice
+                const vCost = v.override_cost_usd !== null && v.override_cost_usd !== undefined && v.override_cost_usd !== ''
+                    ? Number(v.override_cost_usd)
+                    : unitCost
+                return vCost !== null && vPrice > 0 && vPrice < vCost
+            })
+            : []
+
+        const lossScenarios = erosionScenarios.filter(s => s.status === 'loss')
+        const criticalScenarios = erosionScenarios.filter(s => s.status === 'critical')
+
         return {
             cashPrice,
             markup,
             listPrice,
             rawCompareAt,
+            hasCost,
+            unitCost,
             isCompareAtValid,
             isCompareAtInvalid,
             suggestedCompareAt,
             hasCampaignOverride,
             campaignDiscountPct,
+            bogoEffectiveDiscountPct,
             finalStoreListPrice,
             finalStoreCashPrice,
             finalStoreCompareAt,
             effectiveFxSavings,
             promoDiscountPercent,
             discountPercent,
-            refBs
+            refBs,
+            isTaxableStore,
+            taxRatePct,
+            taxAmountOnCash,
+            cashPriceWithTax,
+            taxAmountOnList,
+            listPriceWithTax,
+            netProfitCash,
+            grossMarginCashPct,
+            markupOnCostPct,
+            netProfitList,
+            grossMarginListPct,
+            erosionScenarios,
+            lossScenarios,
+            criticalScenarios,
+            variantsBelowCost
         }
-    }, [formData.price, formData.penalty, formData.compareAt, activeRate, bestActiveCampaign])
+    }, [
+        formData.price,
+        formData.penalty,
+        formData.compareAt,
+        formData.cost,
+        formData.is_tax_exempt,
+        formData.wholesale_active,
+        formData.wholesale_min_qty,
+        formData.wholesale_discount_pct,
+        activeRate,
+        bestActiveCampaign,
+        storeSettings,
+        hasVariants,
+        variants
+    ])
 
     // 🛡️ MEMORIA DE PRECIO BASE ORIGINAL (Para saber si el usuario lo modificó en esta sesión)
     const initialBasePriceRef = useRef<number | null>(null);
@@ -757,6 +988,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     price: product.usd_cash_price || 0,
                     penalty: product.usd_penalty || 0,
                     compareAt: product.compare_at_usd || '',
+                    cost: product.cost_usd !== null && product.cost_usd !== undefined ? Number(product.cost_usd) : '',
                     status: product.status || 'active',
                     shipping_badge_title: product.shipping_badge_title || '',
                     shipping_badge_desc: product.shipping_badge_desc || '',
@@ -953,10 +1185,11 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
             override_usd_price: variantInput.priceOverride !== '' ? Number(variantInput.priceOverride) : null,
             override_usd_penalty: variantInput.penaltyOverride !== '' ? Number(variantInput.penaltyOverride) : null,
             override_compare_at_usd: variantInput.compareAtOverride !== '' ? Number(variantInput.compareAtOverride) : null,
+            override_cost_usd: variantInput.costOverride !== '' ? Number(variantInput.costOverride) : null,
         }))
 
         setVariants([...variants, ...newVariants])
-        setVariantInput({ colorName: '', colorHex: '#000000', defaultStock: 10, priceOverride: '', penaltyOverride: '', compareAtOverride: '', images: [] })
+        setVariantInput({ colorName: '', colorHex: '#000000', defaultStock: 10, priceOverride: '', penaltyOverride: '', compareAtOverride: '', costOverride: '', images: [] })
         setSizeTags([])
         setSizeInputValue('')
         setIsDirty(true)
@@ -1207,7 +1440,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 gallery: v.gallery,
                                 override_usd_price: v.override_usd_price ?? null,
                                 override_usd_penalty: v.override_usd_penalty ?? null,
-                                override_compare_at_usd: v.override_compare_at_usd ?? null
+                                override_compare_at_usd: v.override_compare_at_usd ?? null,
+                                override_cost_usd: v.override_cost_usd ?? null
                             }
                             if (v.id.startsWith('temp-')) toInsert.push(vPayload)
                             else toUpdate.push({ ...vPayload, id: v.id })
@@ -1765,193 +1999,734 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     </div>
                 </div>
 
-                {/* CARD 3: ESTRATEGIA DE PRECIO E IMPUESTOS */}
-                <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-6">
+                {/* CARD 3: CONFIGURACIÓN DE PRECIOS (ESTÁNDAR STRIPE / LINEAR · MOBILE-FIRST) */}
+                <div className="bg-white p-5 md:p-8 rounded-xl border border-neutral-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.01)] space-y-5">
                     <div>
                         <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider pb-3 border-b border-neutral-200/50 flex items-center gap-2">
                             <DollarSign size={16} className="text-neutral-500" />
-                            <span>3. Configuración de Precios</span>
+                            <span>3. Precio del Producto</span>
                         </h3>
-                        <p className="text-xs text-neutral-600 font-medium mt-1">
-                            El precio público en vitrina es la suma del <b>Precio Divisa (Base)</b> más el <b>Margen Conversión</b>. Para mostrar una oferta, el <b>Precio Anterior (Tachado)</b> debe superar ese total.
+                        <p className="text-xs text-neutral-500 font-normal mt-1.5 leading-relaxed">
+                            Define el precio de venta de tu artículo. Los campos de margen operativo, oferta y cálculo de ganancia son opcionales.
                         </p>
                     </div>
 
-                    {/* GRILLA DE PRECIOS EN ORDEN MATEMÁTICO REAL: 1. BASE + 2. MARGEN -> 3. TACHADO */}
+                    {/* GRILLA SIMÉTRICA DE 3 CAMPOS (MISMA SUPERFICIE LIMPIA EN LOS 3 INPUTS) */}
                     <div
                         id="tour-step-3-pricing-grid"
-                        className={`grid grid-cols-1 sm:grid-cols-3 gap-5 scroll-mt-28 md:scroll-mt-32 p-2.5 rounded-xl transition-all ${currentTargetId === 'tour-step-3-pricing-grid'
-                            ? 'relative z-[60] bg-white ring-4 ring-neutral-900/15 shadow-2xl pointer-events-auto'
+                        className={`grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5 scroll-mt-28 md:scroll-mt-32 rounded-xl transition-all ${currentTargetId === 'tour-step-3-pricing-grid'
+                            ? 'relative z-[60] bg-white p-2.5 -m-2.5 ring-4 ring-neutral-900/15 shadow-2xl pointer-events-auto'
                             : ''
                             }`}
                     >
-                        {/* 1. PRECIO DIVISA (BASE) */}
-                        <div id="tour-step-1-price" className={`p-2.5 -m-2.5 rounded-xl ${currentTargetId === 'tour-step-1-price' ? getUniversalSpotlightClass('tour-step-1-price') : ''}`}>
-                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">
-                                1. Precio Divisa (Base) *
-                            </label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
-                                <NumberInput min="0" value={formData.price} onChangeValue={(val) => updateForm('price', val)} placeholder="0.00" className="w-full bg-neutral-50/50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-center" />
-                            </div>
-                            <span className="text-[10px] text-neutral-400 font-medium mt-1 block">
-                                Lo que cobras si pagan en divisas
-                            </span>
-                        </div>
-
-                        {/* 2. MARGEN CONVERSIÓN (OPCIONAL) */}
-                        <div id="tour-step-4-penalty" className={`p-2.5 -m-2.5 rounded-xl ${currentTargetId === 'tour-step-4-penalty' ? getUniversalSpotlightClass('tour-step-4-penalty') : ''}`}>
-                            <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider mb-1.5 block">
-                                2. Margen Conversión (Opcional)
-                            </label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
-                                <NumberInput min="0" value={formData.penalty} onChangeValue={(val) => updateForm('penalty', val)} placeholder="0.00" className="w-full bg-neutral-50/50 border border-neutral-200/50 focus:bg-white focus:border-neutral-400 rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-center" />
-                            </div>
-                            <span className="text-[10px] text-neutral-400 font-medium mt-1 block">
-                                Se suma al precio en Bs (Total: <b className="text-neutral-700 font-mono">${math.listPrice.toFixed(2)}</b>)
-                            </span>
-                        </div>
-
-                        {/* 3. PRECIO ANTERIOR (TACHADO) */}
-                        <div id="tour-step-3-compare-at" className="p-2.5 -m-2.5 rounded-xl">
-                            <div className="flex items-center justify-between mb-1.5">
-                                <label className="text-[11px] font-bold text-rose-700 uppercase tracking-wider block">
-                                    3. Precio Anterior (Tachado)
+                        {/* 1. PRECIO DE VENTA (BASE) */}
+                        <div id="tour-step-1-price" className={`rounded-xl ${currentTargetId === 'tour-step-1-price' ? `p-2 -m-2 ${getUniversalSpotlightClass('tour-step-1-price')}` : ''}`}>
+                            <div className="flex items-center justify-between gap-1 mb-1.5">
+                                <label className="text-[11px] font-bold text-neutral-800 uppercase tracking-wider truncate">
+                                    1. Precio de Venta *
                                 </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setActivePriceHelp(activePriceHelp === 'base' ? null : 'base')}
+                                    className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold transition-colors shrink-0 cursor-pointer border ${activePriceHelp === 'base'
+                                        ? 'bg-neutral-950 text-white border-neutral-950'
+                                        : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-500 border-neutral-200/80'
+                                        }`}
+                                    title="Ayuda sobre Precio de Venta"
+                                >
+                                    ?
+                                </button>
                             </div>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs font-mono">$</span>
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                <NumberInput
+                                    min="0"
+                                    value={formData.price}
+                                    onChangeValue={(val) => updateForm('price', val)}
+                                    placeholder="0.00"
+                                    className="w-full bg-neutral-50/70 border border-neutral-200/80 hover:border-neutral-300 focus:bg-white focus:border-neutral-950 rounded-xl pl-7 pr-3 py-2.5 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-left tabular-nums"
+                                />
+                            </div>
+                            <span className="text-[10px] text-neutral-400 font-medium mt-1.5 block truncate">
+                                Precio principal del artículo
+                            </span>
+                        </div>
+
+                        {/* 2. MARGEN OPERATIVO (OPCIONAL) */}
+                        <div id="tour-step-4-penalty" className={`rounded-xl ${currentTargetId === 'tour-step-4-penalty' ? `p-2 -m-2 ${getUniversalSpotlightClass('tour-step-4-penalty')}` : ''}`}>
+                            <div className="flex items-center justify-between gap-1 mb-1.5">
+                                <label className="text-[11px] font-bold text-neutral-800 uppercase tracking-wider truncate">
+                                    2. Margen Operativo
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setActivePriceHelp(activePriceHelp === 'penalty' ? null : 'penalty')}
+                                    className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold transition-colors shrink-0 cursor-pointer border ${activePriceHelp === 'penalty'
+                                        ? 'bg-neutral-950 text-white border-neutral-950'
+                                        : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-500 border-neutral-200/80'
+                                        }`}
+                                    title="Ayuda sobre Margen Operativo"
+                                >
+                                    ?
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                <NumberInput
+                                    min="0"
+                                    value={formData.penalty}
+                                    onChangeValue={(val) => updateForm('penalty', val)}
+                                    placeholder="0.00 (Opcional)"
+                                    className="w-full bg-neutral-50/70 border border-neutral-200/80 hover:border-neutral-300 focus:bg-white focus:border-neutral-950 rounded-xl pl-7 pr-3 py-2.5 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-left tabular-nums"
+                                />
+                            </div>
+                            <span className="text-[10px] text-neutral-400 font-medium mt-1.5 block truncate">
+                                {math.markup > 0
+                                    ? <>Precio de lista resultante: <b className="text-neutral-700 font-mono">${math.listPrice.toFixed(2)}</b></>
+                                    : 'Opcional · Diferencial sobre el precio base'}
+                            </span>
+                        </div>
+
+                        {/* 3. PRECIO ANTERIOR TACHADO (OFERTA) - Superficie neutra idéntica + Píldora de descuento interna */}
+                        <div id="tour-step-3-compare-at" className="rounded-xl">
+                            <div className="flex items-center justify-between gap-1 mb-1.5">
+                                <label className="text-[11px] font-bold text-neutral-800 uppercase tracking-wider truncate">
+                                    3. Precio Tachado
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setActivePriceHelp(activePriceHelp === 'compare' ? null : 'compare')}
+                                    className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold transition-colors shrink-0 cursor-pointer border ${activePriceHelp === 'compare'
+                                        ? 'bg-neutral-950 text-white border-neutral-950'
+                                        : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-500 border-neutral-200/80'
+                                        }`}
+                                    title="Ayuda sobre Precio Tachado"
+                                >
+                                    ?
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
                                 <NumberInput
                                     min="0"
                                     value={formData.compareAt}
                                     onChangeValue={(val) => updateForm('compareAt', val)}
-                                    placeholder={math.listPrice > 0 ? `${math.suggestedCompareAt.toFixed(2)}` : '60.00'}
-                                    className={`w-full placeholder:text-rose-300 text-rose-700 bg-rose-50/30 border rounded-lg pl-7 pr-3 py-2.5 text-xs font-bold outline-none transition-all font-mono text-center focus:bg-white ${math.isCompareAtInvalid
-                                            ? 'border-amber-400 ring-2 ring-amber-400/20'
-                                            : 'border-rose-200/70 focus:border-rose-400'
+                                    placeholder="0.00 (Opcional)"
+                                    className={`w-full bg-neutral-50/70 border hover:border-neutral-300 focus:bg-white rounded-xl pl-7 pr-16 py-2.5 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-left tabular-nums ${math.isCompareAtInvalid
+                                        ? 'border-amber-400 ring-2 ring-amber-400/15 focus:border-amber-500'
+                                        : 'border-neutral-200/80 focus:border-neutral-950'
                                         }`}
                                 />
+                                {math.isCompareAtValid && !math.hasCampaignOverride && (
+                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/80 font-mono text-[9px] font-bold uppercase">
+                                        -{math.promoDiscountPercent}%
+                                    </span>
+                                )}
                             </div>
-                            <span className="text-[10px] text-neutral-400 font-medium mt-1 block">
+                            <span className="text-[10px] text-neutral-400 font-medium mt-1.5 block truncate">
                                 {math.listPrice > 0
-                                    ? <>Debe ser mayor a <b className="text-rose-700 font-mono">${math.listPrice.toFixed(2)}</b></>
-                                    : 'Opcional · Para mostrar oferta'}
+                                    ? <>Opcional · Mayor a <b className="text-neutral-700 font-mono">${math.listPrice.toFixed(2)}</b> para oferta</>
+                                    : 'Opcional · Para mostrar rebaja'}
                             </span>
                         </div>
                     </div>
-{/* 🏷️ DETECTOR DE CAMPAÑA ACTIVA VINCULADA: Avisa si una campaña de PromotionsPage está aplicando descuento sobre este producto */}
-                    {bestActiveCampaign && (
-                        <div className="p-4 bg-neutral-950 text-white border border-neutral-800 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 animate-in fade-in duration-200">
-                            <div className="flex items-start gap-3 min-w-0">
-                                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                                    <Percent size={15} />
-                                </div>
-                                <div className="space-y-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-xs font-bold text-white leading-tight">
-                                            Vinculado a campaña activa: &quot;{bestActiveCampaign.title}&quot;
-                                        </p>
-                                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[9px] font-bold uppercase tracking-wider">
-                                            {bestActiveCampaign.promo_type === 'percentage'
-                                                ? `-${bestActiveCampaign.discount_percentage}% en Tienda`
-                                                : bestActiveCampaign.promo_type === 'bogo'
-                                                  ? `${bestActiveCampaign.bogo_buy}x${bestActiveCampaign.bogo_pay}`
-                                                  : 'Banner Visual'}
-                                        </span>
-                                    </div>
-                                    <p className="text-[11px] text-neutral-300 font-normal leading-relaxed">
-                                        {math.hasCampaignOverride ? (
+
+                    {/* 💡 PANEL DE AYUDA RÁPIDA (LENGUAJE SENCILLO Y NEUTRAL) */}
+                    <AnimatePresence initial={false}>
+                        {activePriceHelp && (
+                            <motion.div
+                                key={activePriceHelp}
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                                className="overflow-hidden will-change-[height,opacity]"
+                            >
+                                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80 flex items-start justify-between gap-3">
+                                    <div className="space-y-1 text-xs">
+                                        {activePriceHelp === 'base' && (
                                             <>
-                                                Esta campaña aplica un <b className="text-white">-{math.campaignDiscountPct}%</b> automático sobre tus precios de arriba (quedando en <b className="text-emerald-400 font-mono">${math.finalStoreListPrice.toFixed(2)}</b> en vitrina y <b className="text-emerald-400 font-mono">${math.finalStoreCashPrice.toFixed(2)}</b> en divisas) y reemplaza cualquier Precio Anterior Tachado individual mientras la campaña esté activa.
+                                                <p className="font-bold text-neutral-900">1. Precio de Venta</p>
+                                                <p className="text-neutral-600 leading-relaxed">
+                                                    Es el precio base de tu producto. Si no utilizas margen operativo adicional, este será el único precio del artículo para cualquier método de pago (convertido automáticamente a Bolívares a tasa BCV).
+                                                </p>
                                             </>
-                                        ) : (
-                                            <>Este artículo forma parte de la campaña activa &quot;{bestActiveCampaign.title}&quot;.</>
                                         )}
-                                    </p>
+                                        {activePriceHelp === 'penalty' && (
+                                            <>
+                                                <p className="font-bold text-neutral-900">2. Margen Operativo (Opcional)</p>
+                                                <p className="text-neutral-600 leading-relaxed">
+                                                    Úsalo solo si manejas un precio de lista general mayor a tu precio promocional en divisas.{' '}
+                                                    {math.cashPrice > 0 && math.markup > 0 ? (
+                                                        <>Con tus datos actuales, el precio de lista en vitrina es <b>${math.listPrice.toFixed(2)}</b> (${math.cashPrice.toFixed(2)} + ${math.markup.toFixed(2)}), ofreciendo un incentivo de ahorro para pagos directos en divisas de <b>${math.cashPrice.toFixed(2)}</b>.</>
+                                                    ) : (
+                                                        <>Si manejas un solo precio para todos los métodos de pago, déjalo vacío o en 0.</>
+                                                    )}
+                                                </p>
+                                            </>
+                                        )}
+                                        {activePriceHelp === 'compare' && (
+                                            <>
+                                                <p className="font-bold text-neutral-900">3. Precio Tachado (Opcional)</p>
+                                                <p className="text-neutral-600 leading-relaxed">
+                                                    Úsalo cuando quieras mostrar una oferta visual (ej. <i>Antes $40, Ahora $30</i>). Solo debe ser mayor al precio de vitrina actual (<b>${math.listPrice.toFixed(2)}</b>). Si no tienes oferta activa, déjalo vacío.
+                                                </p>
+                                            </>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActivePriceHelp(null)}
+                                        className="p-1 text-neutral-400 hover:text-neutral-900 rounded-md hover:bg-neutral-200/60 transition-colors shrink-0 cursor-pointer"
+                                    >
+                                        <X size={13} />
+                                    </button>
                                 </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* 💎 CALCULADORA DESPLEGABLE DE COSTO Y GANANCIA (SE PLIEGA AL 100% AL PULSAR CERRAR) */}
+                    <div className="bg-white rounded-xl border border-neutral-200/80 overflow-hidden">
+                        {/* Barra Superior Compacta (44px · 1 sola línea en Mobile y Desktop) */}
+                        <button
+                            type="button"
+                            onClick={() => setIsCostPanelOpen(prev => !prev)}
+                            className="flex items-center justify-between w-full px-3.5 py-3 text-left transition-colors cursor-pointer group/cost hover:bg-neutral-50/70"
+                        >
+                            <div className="flex items-center gap-2 min-w-0 pr-2 flex-wrap sm:flex-nowrap">
+                                <span className="w-5 h-5 rounded-md bg-neutral-100 group-hover/cost:bg-neutral-200/80 text-neutral-700 flex items-center justify-center font-mono text-[11px] font-bold shrink-0 transition-colors">
+                                    {isCostPanelOpen ? '−' : '+'}
+                                </span>
+                                <span className="text-xs font-bold text-neutral-900 leading-none truncate">
+                                    Costo y margen de ganancia
+                                </span>
+
+                                {!isCostPanelOpen ? (
+                                    math.hasCost && math.cashPrice > 0 && math.netProfitCash !== null ? (
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border shrink-0 leading-none ${math.netProfitCash < 0
+                                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                }`}>
+                                                {math.netProfitCash >= 0 ? `+$${math.netProfitCash.toFixed(2)}` : `-$${Math.abs(math.netProfitCash).toFixed(2)}`}
+                                                {math.grossMarginCashPct !== null && math.grossMarginCashPct >= 0 ? ` (${math.grossMarginCashPct}%)` : ' · En pérdida'}
+                                            </span>
+
+                                            {math.netProfitCash >= 0 && (math.lossScenarios.length > 0 || math.variantsBelowCost.length > 0) && (
+                                                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 shrink-0 leading-none">
+                                                    ⚠️ {math.variantsBelowCost.length > 0 ? 'Variante bajo costo' : 'Alerta en descuento'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ) : !math.hasCost && math.variantsBelowCost.length > 0 ? (
+                                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 shrink-0 leading-none">
+                                            ⚠️ {math.variantsBelowCost.length} {math.variantsBelowCost.length === 1 ? 'variante bajo costo' : 'variantes bajo costo'}
+                                        </span>
+                                    ) : math.hasCost && math.cashPrice === 0 ? (
+                                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 shrink-0 leading-none">
+                                            Costo: ${math.unitCost?.toFixed(2)}
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] text-neutral-400 font-medium truncate">
+                                            (Opcional)
+                                        </span>
+                                    )
+                                ) : (
+                                    <span className="text-[10px] text-neutral-400 font-medium truncate">
+                                        (Privado · Solo visible para ti)
+                                    </span>
+                                )}
                             </div>
 
-                            <button
-                                type="button"
-                                disabled={isUnlinkingPromo}
-                                onClick={() => handleUnlinkFromCampaign(bestActiveCampaign)}
-                                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer disabled:opacity-50"
-                            >
-                                {isUnlinkingPromo ? 'Excluyendo...' : 'Excluir de esta campaña'}
-                            </button>
-                        </div>
-                    )}
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md transition-colors shrink-0 ${isCostPanelOpen
+                                    ? 'bg-neutral-950 text-white'
+                                    : 'bg-neutral-100 text-neutral-600 group-hover/cost:bg-neutral-200/70'
+                                }`}>
+                                {isCostPanelOpen ? 'Cerrar' : 'Calcular'}
+                            </span>
+                        </button>
 
-                    {/* 🚨 ASISTENTE INTELIGENTE EN VIVO: Si el Precio Tachado es menor o igual a Base + Margen */}
-                    {math.isCompareAtInvalid && !math.hasCampaignOverride && (
-                        <div className="p-4 bg-amber-50/90 border border-amber-300/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 animate-in fade-in duration-200">
-                            <div className="flex items-start gap-2.5 min-w-0">
-                                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                                <div className="space-y-1">
-                                    <p className="text-xs font-bold text-amber-950 leading-tight">
-                                        El descuento no se mostrará en la tienda porque ${math.rawCompareAt.toFixed(2)} es menor al precio en vitrina (${math.listPrice.toFixed(2)})
-                                    </p>
-                                    <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
-                                        Tu producto se muestra al público en <b className="font-mono text-amber-950">${math.listPrice.toFixed(2)}</b> (${math.cashPrice.toFixed(2)} base + ${math.markup.toFixed(2)} de margen).
-                                        {math.rawCompareAt > math.cashPrice && math.markup > 0
-                                            ? <> Si antes costaba <b className="font-mono">${math.rawCompareAt.toFixed(2)}</b> en divisas, sumándole el margen de <b className="font-mono">${math.markup.toFixed(2)}</b> su precio anterior tachado debe ser <b className="font-mono text-amber-950">${math.suggestedCompareAt.toFixed(2)}</b>.</>
-                                            : <> Para activar la oferta, coloca un precio anterior superior a <b className="font-mono text-amber-950">${math.listPrice.toFixed(2)}</b>.</>}
-                                    </p>
+                        {/* Cuerpo Desplegable */}
+                        <AnimatePresence initial={false}>
+                            {isCostPanelOpen && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                                    className="overflow-hidden will-change-[height,opacity]"
+                                >
+                                    <div className="p-4 border-t border-neutral-100 bg-neutral-50/40 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                                        {/* Columna 1: Input de Costo */}
+                                        <div>
+                                            <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider block mb-1.5">
+                                                Costo por unidad
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                <NumberInput
+                                                    min="0"
+                                                    value={formData.cost}
+                                                    onChangeValue={(val) => updateForm('cost', val)}
+                                                    placeholder="0.00"
+                                                    className="w-full bg-white border border-neutral-200/80 focus:border-neutral-950 rounded-xl pl-7 pr-3 py-2 text-xs font-bold text-neutral-900 outline-none transition-all font-mono text-left tabular-nums"
+                                                />
+                                            </div>
+                                            <span className="text-[10px] text-neutral-400 font-medium mt-1 block truncate">
+                                                Lo que te cuesta adquirirlo o producirlo
+                                            </span>
+                                        </div>
+
+                                        {/* Columna 2: Ganancia Libre */}
+                                        <div className="sm:pl-5 sm:border-l border-neutral-200/70 flex flex-col justify-center">
+                                            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
+                                                Tu Ganancia Libre
+                                            </span>
+                                            {math.hasCost && math.cashPrice > 0 && math.netProfitCash !== null ? (
+                                                <>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className={`w-2 h-2 rounded-full shrink-0 ${math.netProfitCash < 0 ? 'bg-rose-500' : math.netProfitCash === 0 ? 'bg-neutral-400' : 'bg-emerald-500'
+                                                            }`} />
+                                                        <span className={`font-mono text-xl font-black tabular-nums tracking-tight leading-none ${math.netProfitCash < 0
+                                                                ? 'text-rose-600'
+                                                                : math.netProfitCash === 0
+                                                                    ? 'text-neutral-700'
+                                                                    : 'text-emerald-600'
+                                                            }`}>
+                                                            {math.netProfitCash >= 0
+                                                                ? `+$${math.netProfitCash.toFixed(2)}`
+                                                                : `-$${Math.abs(math.netProfitCash).toFixed(2)}`}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[10px] text-neutral-400 font-medium mt-1.5 truncate">
+                                                        Sobre tu precio de venta (${math.cashPrice.toFixed(2)})
+                                                    </span>
+                                                </>
+                                            ) : math.hasCost && math.cashPrice === 0 ? (
+                                                <>
+                                                    <span className="text-xs font-bold text-amber-700 mt-1">
+                                                        Falta el Precio de Venta
+                                                    </span>
+                                                    <span className="text-[10px] text-neutral-400 font-medium mt-1 truncate">
+                                                        Indica arriba a cuánto lo vendes
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-lg font-mono font-bold text-neutral-300 mt-0.5">—</span>
+                                                    <span className="text-[10px] text-neutral-400 font-medium mt-0.5 truncate">
+                                                        Ingresa tu costo a la izquierda
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        {/* Columna 3: Margen % */}
+                                        <div className="sm:pl-5 sm:border-l border-neutral-200/70 flex flex-col justify-center">
+                                            <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
+                                                Margen
+                                            </span>
+                                            {math.hasCost && math.cashPrice > 0 && math.grossMarginCashPct !== null ? (
+                                                <>
+                                                    <div className="flex items-baseline gap-2 mt-1">
+                                                        <span className={`font-mono text-xl font-black tabular-nums tracking-tight leading-none ${math.grossMarginCashPct < 0
+                                                                ? 'text-rose-600'
+                                                                : math.grossMarginCashPct < 10
+                                                                    ? 'text-amber-600'
+                                                                    : 'text-neutral-900'
+                                                            }`}>
+                                                            {math.grossMarginCashPct > 0
+                                                                ? `${math.grossMarginCashPct}%`
+                                                                : math.grossMarginCashPct === 0
+                                                                    ? '0%'
+                                                                    : 'Sin margen'}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[10px] text-neutral-400 font-medium mt-1.5 truncate">
+                                                        {math.isTaxableStore
+                                                            ? (formData.is_tax_exempt ? 'Producto exento de IVA' : 'Calculado sobre precio sin IVA')
+                                                            : 'Porcentaje libre para ti'}
+                                                    </span>
+                                                </>
+                                            ) : math.hasCost && math.cashPrice === 0 && math.unitCost ? (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateForm('price', Math.ceil(math.unitCost! / 0.8))}
+                                                        className="mt-1 self-start px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-black text-white text-[10px] font-mono font-bold transition-colors cursor-pointer active:scale-95"
+                                                    >
+                                                        Sugerir ${Math.ceil(math.unitCost / 0.8).toFixed(2)} (+20%)
+                                                    </button>
+                                                    <span className="text-[10px] text-neutral-400 font-medium mt-1 truncate">
+                                                        Asignar precio sugerido
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-lg font-mono font-bold text-neutral-300 mt-0.5">—</span>
+                                                    <span className="text-[10px] text-neutral-400 font-medium mt-0.5 truncate">
+                                                        Se calcula automáticamente
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* 🚨 ALERTAS DE PÉRDIDA (Funciona tanto por costo padre como por costo propio de variante) */}
+                                    {(math.lossScenarios.length > 0 || math.variantsBelowCost.length > 0) && (
+                                        <div className="px-4 py-3 bg-rose-50/80 border-t border-rose-200/70 space-y-2.5">
+                                            {math.lossScenarios.map(sc => {
+                                                const isGuideOpen = openWhatToDoId === sc.id
+                                                return (
+                                                    <div key={sc.id} className="space-y-1.5">
+                                                        <div className="flex items-start gap-2 text-xs text-rose-900">
+                                                            <AlertTriangle size={14} className="text-rose-600 shrink-0 mt-0.5" />
+                                                            <p className="leading-snug flex-1">
+                                                                <b>{sc.title}:</b> {sc.summary}{' '}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setOpenWhatToDoId(isGuideOpen ? null : sc.id)}
+                                                                    className="font-bold underline underline-offset-2 text-rose-700 hover:text-black transition-colors cursor-pointer whitespace-nowrap ml-1"
+                                                                >
+                                                                    {isGuideOpen ? 'Ocultar ayuda' : '¿Qué hacer?'}
+                                                                </button>
+                                                            </p>
+                                                        </div>
+
+                                                        <AnimatePresence initial={false}>
+                                                            {isGuideOpen && (
+                                                                <motion.div
+                                                                    initial={{ height: 0, opacity: 0 }}
+                                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                                    exit={{ height: 0, opacity: 0 }}
+                                                                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                                                                    className="overflow-hidden will-change-[height,opacity]"
+                                                                >
+                                                                    <div className="ml-5 p-3 rounded-lg bg-white border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                                                        <p className="text-[11px] text-neutral-700 leading-relaxed">
+                                                                            💡 <b>Solución:</b> {sc.whatToDo}
+                                                                        </p>
+                                                                        {sc.suggestedBasePrice && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const newBase = sc.suggestedBasePrice!
+                                                                                    updateForm('price', newBase)
+                                                                                    // Si tenía un Precio Tachado activo que quedaría por debajo del nuevo precio de vitrina, lo ajustamos automáticamente
+                                                                                    const newList = newBase + math.markup
+                                                                                    if (math.rawCompareAt > 0 && math.rawCompareAt <= newList) {
+                                                                                        updateForm('compareAt', Math.ceil(newList * 1.15))
+                                                                                    }
+                                                                                    setOpenWhatToDoId(null)
+                                                                                }}
+                                                                                className="px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-black text-white text-[10px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                                                            >
+                                                                                Subir precio a ${sc.suggestedBasePrice.toFixed(2)}
+                                                                            </button>
+                                                                        )}
+                                                                        {sc.suggestedWholesalePct !== null && sc.suggestedWholesalePct !== undefined && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    setFormData(prev => ({
+                                                                                        ...prev,
+                                                                                        wholesale_active: true,
+                                                                                        wholesale_discount_pct: sc.suggestedWholesalePct!
+                                                                                    }))
+                                                                                    setIsDirty(true)
+                                                                                    setOpenWhatToDoId(null)
+                                                                                }}
+                                                                                className="px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-black text-white text-[10px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                                                            >
+                                                                                Fijar mayorista en {sc.suggestedWholesalePct}%
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+                                                )
+                                            })}
+
+                                         {math.variantsBelowCost.length > 0 && (() => {
+                                                const isVarGuideOpen = openWhatToDoId === 'variants_loss'
+                                                const firstBadVar = math.variantsBelowCost[0]
+                                                const firstBadPrice = Number(firstBadVar?.override_usd_price || math.cashPrice || 0)
+                                                const firstBadCost = Number(firstBadVar?.override_cost_usd || math.unitCost || 0)
+                                                return (
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                                                            <div className="flex items-start gap-2 text-xs text-rose-900">
+                                                                <AlertTriangle size={14} className="text-rose-600 shrink-0 mt-0.5" />
+                                                                <p className="leading-snug flex-1">
+                                                                    <b>Variante bajo costo:</b>{' '}
+                                                                    {math.variantsBelowCost.length === 1
+                                                                        ? <>La variante <b>&quot;{firstBadVar.color_name} ({firstBadVar.size})&quot;</b> se vende a <b className="font-mono">${firstBadPrice.toFixed(2)}</b> pero cuesta <b className="font-mono">${firstBadCost.toFixed(2)}</b>.</>
+                                                                        : <>Tienes <b>{math.variantsBelowCost.length} variantes</b> con un precio menor a su costo.</>}{' '}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setOpenWhatToDoId(isVarGuideOpen ? null : 'variants_loss')}
+                                                                        className="font-bold underline underline-offset-2 text-rose-700 hover:text-black transition-colors cursor-pointer whitespace-nowrap ml-1"
+                                                                    >
+                                                                        {isVarGuideOpen ? 'Ocultar ayuda' : '¿Qué hacer?'}
+                                                                    </button>
+                                                                </p>
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const el = document.getElementById('tour-step-2-matrix')
+                                                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                                                    if (firstBadVar?.id) setExpandedVariantId(firstBadVar.id)
+                                                                }}
+                                                                className="px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-black text-white text-[10px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                                            >
+                                                                Ver variante ↓
+                                                            </button>
+                                                        </div>
+
+                                                        <AnimatePresence initial={false}>
+                                                            {isVarGuideOpen && (
+                                                                <motion.div
+                                                                    initial={{ height: 0, opacity: 0 }}
+                                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                                    exit={{ height: 0, opacity: 0 }}
+                                                                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                                                                    className="overflow-hidden will-change-[height,opacity]"
+                                                                >
+                                                                    <div className="ml-5 p-3 rounded-lg bg-white border border-rose-200 text-[11px] text-neutral-700 leading-relaxed">
+                                                                        💡 <b>Solución:</b> Toca &quot;Ver variante&quot; para ir directamente a esa talla/color y subir su &quot;1. Precio Propio&quot; o ajustar su &quot;4. Costo Propio&quot;.
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+                                                )
+                                            })()}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* 🟠 AVISO PREVENTIVO SI EL MARGEN OPERATIVO SUPERA AL PRECIO DE VENTA (Evita que pongan la Tasa BCV o Bolívares por error) */}
+                    <AnimatePresence initial={false}>
+                        {math.cashPrice > 0 && math.markup > math.cashPrice && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                                className="overflow-hidden will-change-[height,opacity]"
+                            >
+                                <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                    <div className="flex items-start gap-2.5 min-w-0">
+                                        <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-amber-950 leading-snug">
+                                            <b>¿El Margen Operativo (${math.markup.toFixed(2)}) es correcto?</b> Es mayor que el precio del producto (${math.cashPrice.toFixed(2)}) y sube el precio en vitrina a <b className="font-mono">${math.listPrice.toFixed(2)}</b>. Recuerda que este campo es en <b>dólares ($)</b>, no en Bolívares ni la tasa BCV.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateForm('penalty', '')}
+                                        className="px-3 py-1.5 bg-white hover:bg-neutral-100 text-amber-950 border border-amber-300 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                    >
+                                        Quitar margen
+                                    </button>
                                 </div>
-                            </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
-                            <button
-                                type="button"
-                                onClick={() => updateForm('compareAt', math.suggestedCompareAt)}
-                                className="px-3.5 py-2 bg-neutral-950 hover:bg-black text-white rounded-xl text-[11px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 shadow-xs cursor-pointer"
+                    {/* 🏷️ DETECTOR DE CAMPAÑA ACTIVA VINCULADA */}
+                    <AnimatePresence initial={false}>
+                        {bestActiveCampaign && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                                className="overflow-hidden will-change-[height,opacity]"
                             >
-                                Ajustar tachado a ${math.suggestedCompareAt.toFixed(2)}
-                            </button>
-                        </div>
-                    )}
+                                <div className="p-4 bg-neutral-950 text-white border border-neutral-800 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
+                                    <div className="flex items-start gap-3 min-w-0">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                                            <Percent size={15} />
+                                        </div>
+                                        <div className="space-y-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="text-xs font-bold text-white leading-tight">
+                                                    Incluido en la campaña: &quot;{bestActiveCampaign.title}&quot;
+                                                </p>
+                                                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[9px] font-bold uppercase tracking-wider">
+                                                    {bestActiveCampaign.promo_type === 'percentage'
+                                                        ? `-${bestActiveCampaign.discount_percentage}% en Tienda`
+                                                        : bestActiveCampaign.promo_type === 'bogo'
+                                                            ? `${bestActiveCampaign.bogo_buy}x${bestActiveCampaign.bogo_pay}`
+                                                            : 'Banner Visual'}
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-neutral-300 font-normal leading-relaxed">
+                                                {math.hasCampaignOverride ? (
+                                                    <>
+                                                        Esta campaña aplica un <b className="text-white">-{math.campaignDiscountPct}%</b> automático sobre tus precios (quedando en <b className="text-emerald-400 font-mono">${math.finalStoreListPrice.toFixed(2)}</b> en vitrina).
+                                                    </>
+                                                ) : (
+                                                    <>Este producto participa actualmente en la campaña &quot;{bestActiveCampaign.title}&quot;.</>
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
 
-                    {/* 🛡️ BANNER REACTIVO: Solo aparece si el usuario modificó el precio base Y hay variantes con precio propio */}
-                    {isBasePriceModified && variantsWithCustomPrice.length > 0 && (
-                        <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
-                            <div className="flex items-start gap-2.5 min-w-0">
-                                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                                <div className="space-y-0.5">
-                                    <p className="text-xs font-bold text-amber-950 leading-tight">
-                                        {variantsWithCustomPrice.length === 1 
-                                            ? `La variante "${variantsWithCustomPrice[0].color_name}" tiene un precio propio asignado ($${Number(variantsWithCustomPrice[0].override_usd_price).toFixed(2)})`
-                                            : `Tienes ${variantsWithCustomPrice.length} variantes con precio fijo asignado`
-                                        }
-                                    </p>
-                                    <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
-                                        Cambiar el precio base a <b className="text-amber-950 font-mono">${Number(formData.price || 0).toFixed(2)}</b> no afectará a esas variantes a menos que entres a editarlas o borres su precio propio para que lo hereden.
-                                    </p>
+                                    <button
+                                        type="button"
+                                        disabled={isUnlinkingPromo}
+                                        onClick={() => handleUnlinkFromCampaign(bestActiveCampaign)}
+                                        className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer disabled:opacity-50"
+                                    >
+                                        {isUnlinkingPromo ? 'Excluyendo...' : 'Excluir de esta campaña'}
+                                    </button>
                                 </div>
-                            </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
-                            <button
-                                type="button"
-                                onClick={scrollToVariantMatrix}
-                                className="px-3 py-1.5 bg-amber-900 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-black transition-all active:scale-95 shrink-0 shadow-2xs cursor-pointer flex items-center gap-1"
+                    {/* 🟠 ALERTA ÁMBAR LIMPIA: Precio Tachado menor o igual al Precio en Vitrina + "¿Qué hacer?" */}
+                    <AnimatePresence initial={false}>
+                        {math.isCompareAtInvalid && !math.hasCampaignOverride && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                                className="overflow-hidden will-change-[height,opacity]"
                             >
-                                <span>Ver Variantes ↓</span>
-                            </button>
-                        </div>
-                    )}
+                                <div className="p-4 bg-amber-50/80 border border-amber-200/90 rounded-xl space-y-2.5">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                        <div className="flex items-start gap-2.5 min-w-0">
+                                            <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                                            <p className="text-xs text-amber-950 leading-snug">
+                                                <b>La oferta no se mostrará en tu tienda:</b> El precio tachado (<span className="font-mono font-bold">${math.rawCompareAt.toFixed(2)}</span>) debe ser mayor al precio de vitrina (<span className="font-mono font-bold">${math.listPrice.toFixed(2)}</span>).{' '}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOpenWhatToDoId(openWhatToDoId === 'compare_invalid' ? null : 'compare_invalid')}
+                                                    className="font-bold underline underline-offset-2 text-amber-800 hover:text-black transition-colors cursor-pointer whitespace-nowrap ml-1"
+                                                >
+                                                    {openWhatToDoId === 'compare_invalid' ? 'Ocultar ayuda' : '¿Qué hacer?'}
+                                                </button>
+                                            </p>
+                                        </div>
 
-                    {/* EXENCIÓN FISCAL (SENIAT) */}
-                    {storeSettings?.fiscalProfile !== 'informal' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                updateForm('compareAt', math.suggestedCompareAt)
+                                                setOpenWhatToDoId(null)
+                                            }}
+                                            className="px-3.5 py-1.5 bg-neutral-950 hover:bg-black text-white rounded-lg text-[11px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                        >
+                                            Ajustar a ${math.suggestedCompareAt.toFixed(2)}
+                                        </button>
+                                    </div>
+
+                                    <AnimatePresence initial={false}>
+                                        {openWhatToDoId === 'compare_invalid' && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                                                className="overflow-hidden will-change-[height,opacity]"
+                                            >
+                                                <div className="ml-6 p-3 rounded-lg bg-white border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed">
+                                                    💡 <b>¿Por qué pasa esto?</b> El precio público del producto es <b>${math.listPrice.toFixed(2)}</b>. Para mostrar una rebaja, el Precio Tachado tiene que ser mayor a <b>${math.listPrice.toFixed(2)}</b> (por ejemplo, <b>${math.suggestedCompareAt.toFixed(2)}</b>), o déjalo vacío si no está en oferta.
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* 🟠 ALERTA ÁMBAR LIMPIA: Variantes con precio fijo propio al cambiar el precio base */}
+                    <AnimatePresence initial={false}>
+                        {isBasePriceModified && variantsWithCustomPrice.length > 0 && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                                className="overflow-hidden will-change-[height,opacity]"
+                            >
+                                <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-xl space-y-2">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                        <div className="flex items-start gap-2.5 min-w-0">
+                                            <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                                            <p className="text-xs text-amber-950 leading-snug">
+                                                <b>Nota sobre tus variantes:</b>{' '}
+                                                {variantsWithCustomPrice.length === 1
+                                                    ? `La variante "${variantsWithCustomPrice[0].color_name}" tiene un precio fijo propio ($${Number(variantsWithCustomPrice[0].override_usd_price).toFixed(2)}) y no cambiará automáticamente.`
+                                                    : `Tienes ${variantsWithCustomPrice.length} variantes con precio fijo propio que no cambiarán con este nuevo precio.`}{' '}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOpenWhatToDoId(openWhatToDoId === 'variant_custom_price' ? null : 'variant_custom_price')}
+                                                    className="font-bold underline underline-offset-2 text-amber-800 hover:text-black transition-colors cursor-pointer whitespace-nowrap ml-1"
+                                                >
+                                                    {openWhatToDoId === 'variant_custom_price' ? 'Ocultar ayuda' : '¿Qué hacer?'}
+                                                </button>
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={scrollToVariantMatrix}
+                                            className="px-3 py-1.5 bg-neutral-950 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-black transition-all active:scale-95 shrink-0 cursor-pointer"
+                                        >
+                                            Ver Variantes ↓
+                                        </button>
+                                    </div>
+
+                                    <AnimatePresence initial={false}>
+                                        {openWhatToDoId === 'variant_custom_price' && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                                                className="overflow-hidden will-change-[height,opacity]"
+                                            >
+                                                <div className="ml-6 p-3 rounded-lg bg-white border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed">
+                                                    💡 <b>Solución:</b> Si quieres que todas las tallas/colores usen el nuevo precio de <b>${Number(formData.price || 0).toFixed(2)}</b>, toca &quot;Ver Variantes&quot; y presiona <i>&quot;Heredar&quot;</i> en su campo de Precio Propio.
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* EXENCIÓN FISCAL (SENIAT) - Solo visible si la tienda es Contribuyente Ordinario o Especial */}
+                    {math.isTaxableStore && (
                         <div
-                            className={`p-4 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${formData.is_tax_exempt ? 'bg-emerald-50 border-emerald-200/60 text-emerald-900' : 'bg-neutral-50/50 border-neutral-200/50 hover:bg-neutral-100/50 text-neutral-800'}`}
+                            className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${formData.is_tax_exempt
+                                ? 'bg-emerald-50 border-emerald-200/70 text-emerald-900'
+                                : 'bg-neutral-50/50 border-neutral-200/60 hover:bg-neutral-100/50 text-neutral-800'
+                                }`}
                             onClick={() => updateForm('is_tax_exempt', !formData.is_tax_exempt)}
                         >
                             <div className="pr-4 mb-3 sm:mb-0 space-y-0.5">
                                 <p className="font-bold text-xs flex items-center gap-1.5">
                                     <Receipt size={14} className={formData.is_tax_exempt ? 'text-emerald-700' : 'text-neutral-600'} />
-                                    <span>Producto Exento de IVA (Alícuota 0%)</span>
+                                    <span>Producto Exento de IVA (0%)</span>
                                 </p>
-                                <p className={`text-xs ${formData.is_tax_exempt ? 'text-emerald-800 font-medium' : 'text-neutral-600 font-medium'}`}>
-                                    Marcar si este rubro califica como exento o exonerado de impuestos según la normativa legal del SENIAT.
+                                <p className={`text-xs ${formData.is_tax_exempt ? 'text-emerald-800 font-medium' : 'text-neutral-500 font-normal'}`}>
+                                    Actívalo si este artículo no cobra IVA según la normativa del SENIAT.
                                 </p>
                             </div>
                             <div className={`w-10 h-5.5 rounded-full border flex items-center px-0.5 shrink-0 transition-colors duration-200 ${formData.is_tax_exempt ? 'bg-emerald-600 border-emerald-600 justify-end' : 'bg-neutral-200 border-neutral-300 justify-start'}`}>
@@ -1961,35 +2736,34 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                     )}
                 </div>
 
-                {/* 💎 TARJETA NEGRA REDISEÑADA: ESPEJO 100% FIEL (INCLUYE CAMPAÑAS ACTIVAS SI APLICAN) */}
+                {/* 💎 TARJETA NEGRA DE VISTA PREVIA: ADAPTATIVA (1 COLUMNA LIMPIA SI ES PRECIO ÚNICO, 2 COLUMNAS SI HAY DIFERENCIAL) */}
                 <div id="tour-step-4-card" className={`p-2.5 -m-2.5 rounded-xl scroll-mt-28 md:scroll-mt-32 ${getUniversalSpotlightClass('tour-step-4-card')}`}>
                     <div className="bg-neutral-950 text-white rounded-2xl border border-neutral-800/90 shadow-lg overflow-hidden">
-                        {/* Barra Superior de Telemetría */}
+                        {/* Cabecera de Telemetría */}
                         <div className="px-5 py-3.5 bg-white/[0.03] border-b border-neutral-800/80 flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-neutral-300">
-                                    Así se verá reflejado en tu tienda
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.16em] text-neutral-300 truncate">
+                                    Vista previa en tu catálogo
                                 </span>
                                 {math.hasCampaignOverride && bestActiveCampaign && (
                                     <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                        Con Campaña: {bestActiveCampaign.title} (-{math.campaignDiscountPct}%)
+                                        Campaña -{math.campaignDiscountPct}%
                                     </span>
                                 )}
                             </div>
-                            <span className="text-[10px] font-mono font-bold text-neutral-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10 tabular-nums">
+                            <span className="text-[10px] font-mono font-bold text-neutral-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10 tabular-nums shrink-0">
                                 {rateLabel}: Bs. {activeRate.toFixed(2)}
                             </span>
                         </div>
 
-                        {/* Cuerpo Dividido en 2 Columnas */}
+                        {/* Cuerpo Dividido Inteligente */}
                         <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-neutral-800/80">
-
                             {/* Columna 1: Precio Público en Vitrina */}
                             <div className="p-5 md:p-6 flex flex-col justify-between space-y-3">
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
-                                        1. Precio Público en Vitrina
+                                        Precio en Vitrina
                                     </span>
                                     {math.promoDiscountPercent > 0 && (
                                         <span className="px-2 py-0.5 rounded bg-rose-500 text-white font-mono text-[10px] font-black uppercase tracking-wider">
@@ -1999,41 +2773,35 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 </div>
 
                                 <div className="space-y-1">
-                                    {math.finalStoreCompareAt > math.finalStoreListPrice && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-mono font-semibold text-neutral-500 line-through tabular-nums">
-                                                ${math.finalStoreCompareAt.toFixed(2)}
-                                            </span>
-                                            <span className="text-[10px] font-mono text-rose-400">
-                                                {math.hasCampaignOverride ? '(Precio de lista sin campaña)' : '(Precio anterior tachado)'}
-                                            </span>
-                                        </div>
-                                    )}
-
                                     <div className="flex items-baseline gap-2.5 flex-wrap">
                                         <span className="text-3xl md:text-4xl font-black font-mono tracking-tight text-white tabular-nums leading-none">
                                             ${math.finalStoreListPrice.toFixed(2)}
                                         </span>
-                                        <span className="text-sm font-mono font-bold text-neutral-400 tabular-nums">
-                                            Bs. {math.refBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </span>
+                                        {math.finalStoreCompareAt > math.finalStoreListPrice && (
+                                            <span className="text-sm font-mono font-semibold text-neutral-500 line-through tabular-nums">
+                                                ${math.finalStoreCompareAt.toFixed(2)}
+                                            </span>
+                                        )}
                                     </div>
+                                    <p className="text-xs font-mono font-bold text-neutral-400 tabular-nums">
+                                        Bs. {math.refBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </p>
                                 </div>
 
-                                <p className="text-[11px] font-mono text-neutral-400 pt-1 border-t border-neutral-800/60">
+                                <p className="text-[11px] font-mono text-neutral-400 pt-2 border-t border-neutral-800/60 leading-snug">
                                     {math.hasCampaignOverride
-                                        ? `Cálculo: ($${math.cashPrice.toFixed(2)} Base + $${math.markup.toFixed(2)} Margen = $${math.listPrice.toFixed(2)}) − ${math.campaignDiscountPct}% Campaña = $${math.finalStoreListPrice.toFixed(2)}`
+                                        ? `Precio con -${math.campaignDiscountPct}% de campaña aplicado.`
                                         : math.markup > 0
-                                          ? `Fórmula: $${math.cashPrice.toFixed(2)} (Base) + $${math.markup.toFixed(2)} (Margen) = $${math.listPrice.toFixed(2)}`
-                                          : `Precio único sin margen de conversión adicional ($${math.cashPrice.toFixed(2)})`}
+                                            ? `Cálculo: $${math.cashPrice.toFixed(2)} (Base) + $${math.markup.toFixed(2)} (Margen) = $${math.listPrice.toFixed(2)}`
+                                            : `Precio estándar convertido automáticamente a tasa oficial BCV.`}
                                 </p>
                             </div>
 
-                            {/* Columna 2: Etiqueta de Pago en Divisas */}
+                            {/* Columna 2: Incentivo Promocional (si aplica) */}
                             <div className="p-5 md:p-6 flex flex-col justify-between space-y-3 bg-white/[0.01]">
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
-                                        2. Etiqueta de Pago en Divisas
+                                        {math.markup > 0 ? 'Etiqueta Promocional en Divisas' : 'Modalidad de Cobro'}
                                     </span>
                                     {math.effectiveFxSavings > 0 && (
                                         <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono text-[10px] font-bold uppercase tracking-wider">
@@ -2053,21 +2821,18 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                     ) : (
                                         <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-neutral-300">
                                             <span className="text-xs font-mono font-semibold">
-                                                Sin etiqueta de descuento en divisas (Margen = $0.00)
+                                                Precio único: <strong className="text-white font-bold">${math.finalStoreCashPrice.toFixed(2)}</strong> en cualquier método
                                             </span>
                                         </div>
                                     )}
                                 </div>
 
-                                <p className="text-[11px] text-neutral-400 leading-snug pt-1 border-t border-neutral-800/60">
+                                <p className="text-[11px] text-neutral-400 leading-snug pt-2 border-t border-neutral-800/60">
                                     {math.markup > 0
-                                        ? math.hasCampaignOverride
-                                            ? `En divisas el precio base ($${math.cashPrice.toFixed(2)}) también recibe el -${math.campaignDiscountPct}% de la campaña, quedando en $${math.finalStoreCashPrice.toFixed(2)}.`
-                                            : `Si el cliente paga en Zelle, Efectivo o Binance, el sistema le descuenta los $${math.markup.toFixed(2)} de margen y paga exactamente $${math.cashPrice.toFixed(2)}.`
-                                        : 'Agrega un Margen de Conversión arriba si deseas incentivar pagos en divisas.'}
+                                        ? `Muestra al cliente un precio promocional de $${math.finalStoreCashPrice.toFixed(2)} para pagos directos en divisas.`
+                                        : 'El cliente verá un único precio sin etiquetas adicionales.'}
                                 </p>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -2083,6 +2848,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                 initialActive={formData.wholesale_active}
                                 initialMinQty={formData.wholesale_min_qty}
                                 initialDiscountPct={formData.wholesale_discount_pct}
+                                basePrice={Number(formData.price) || 0}
+                                unitCost={math.unitCost}
                                 onChange={(wholesaleData) => {
                                     setFormData(prev => ({
                                         ...prev,
@@ -2190,8 +2957,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                         updateVariantInput('images', []);
                                                     }}
                                                     className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${variantMode === 'sizes_only'
-                                                            ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
-                                                            : 'text-neutral-500 hover:text-neutral-900'
+                                                        ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
+                                                        : 'text-neutral-500 hover:text-neutral-900'
                                                         }`}
                                                 >
                                                     Solo Tallas
@@ -2204,8 +2971,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                         if (variantInput.colorName === 'Talla') updateVariantInput('colorName', '');
                                                     }}
                                                     className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${variantMode === 'color'
-                                                            ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
-                                                            : 'text-neutral-500 hover:text-neutral-900'
+                                                        ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
+                                                        : 'text-neutral-500 hover:text-neutral-900'
                                                         }`}
                                                 >
                                                     Color + Tallas
@@ -2218,8 +2985,8 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                         if (variantInput.colorName === 'Talla') updateVariantInput('colorName', '');
                                                     }}
                                                     className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap ${variantMode === 'model'
-                                                            ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
-                                                            : 'text-neutral-500 hover:text-neutral-900'
+                                                        ? 'bg-white text-neutral-950 shadow-xs border border-neutral-200/50'
+                                                        : 'text-neutral-500 hover:text-neutral-900'
                                                         }`}
                                                 >
                                                     Modelo / Estilo
@@ -2382,7 +3149,7 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                             </div>
                                         </div>
 
-                                        {/* 🚀 BOTÓN 1: PRECIOS ESPECÍFICOS (TEXTO BREVE, EXPLICATIVO Y EN 1 SOLA LÍNEA) */}
+                                        {/* 🚀 BOTÓN 1: PRECIOS Y COSTO POR LOTE DE TALLAS (PARIDAD 100% CON APARTADO 3) */}
                                         <div className="bg-white rounded-xl border border-neutral-200/70 shadow-2xs p-3">
                                             <button
                                                 type="button"
@@ -2395,60 +3162,167 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                                     </span>
                                                     <div className="flex items-baseline gap-1.5 truncate">
                                                         <span className="text-xs font-bold text-neutral-900 leading-none">
-                                                            Precios por Talla
+                                                            Precios y costo por talla
                                                         </span>
-                                                        <span className="text-[10px] text-neutral-400 font-medium hidden sm:inline truncate">
-                                                            (Opcional · Hereda el precio base)
+                                                        <span className="text-[10px] text-neutral-400 font-medium truncate">
+                                                            (Opcional · Hereda del producto base)
                                                         </span>
                                                     </div>
                                                 </div>
 
                                                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md transition-colors shrink-0 ${showVariantPricing
-                                                    ? 'bg-neutral-900 text-white'
-                                                    : 'bg-neutral-100 text-neutral-600 group-hover/price:bg-neutral-200/70'
+                                                        ? 'bg-neutral-900 text-white'
+                                                        : 'bg-neutral-100 text-neutral-600 group-hover/price:bg-neutral-200/70'
                                                     }`}>
                                                     {showVariantPricing ? 'Cerrar' : 'Personalizar'}
                                                 </span>
                                             </button>
 
-                                            <AnimatePresence>
-                                                {showVariantPricing && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, height: 0 }}
-                                                        animate={{ opacity: 1, height: 'auto' }}
-                                                        exit={{ opacity: 0, height: 0 }}
-                                                        transition={{ duration: 0.2 }}
-                                                        className="overflow-hidden"
-                                                    >
-                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 mt-2.5 border-t border-neutral-100">
-                                                            <div>
-                                                                <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Precio específico $</label>
-                                                                <div className="relative">
-                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                                                    <NumberInput min="0" placeholder="Hereda base" value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-900 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
+                                            <AnimatePresence initial={false}>
+                                                {showVariantPricing && (() => {
+                                                    const bPrice = variantInput.priceOverride !== '' ? Number(variantInput.priceOverride) : math.cashPrice
+                                                    const bMarkup = variantInput.penaltyOverride !== '' ? Number(variantInput.penaltyOverride) : math.markup
+                                                    const bList = Number((bPrice + bMarkup).toFixed(2))
+                                                    const bHasCustomCompare = variantInput.compareAtOverride !== '' && Number(variantInput.compareAtOverride) > 0
+                                                    const bCompare = bHasCustomCompare ? Number(variantInput.compareAtOverride) : math.rawCompareAt
+                                                    const bCompareValid = bCompare > bList && bList > 0
+                                                    const bCompareInvalid = bHasCustomCompare && bCompare <= bList
+                                                    const bSuggestedCompare = Math.ceil(bList * 1.15)
+                                                    const bPromoPct = bCompareValid ? Math.round(((bCompare - bList) / bCompare) * 100) : 0
+
+                                                    const bHasCustomCost = variantInput.costOverride !== '' && Number(variantInput.costOverride) > 0
+                                                    const bCost = bHasCustomCost ? Number(variantInput.costOverride) : math.unitCost
+                                                    const bProfit = bCost !== null && bPrice > 0 ? Number((bPrice - bCost).toFixed(2)) : null
+                                                    const bMarginPct = bCost !== null && bPrice > 0 ? Number((((bPrice - bCost) / bPrice) * 100).toFixed(1)) : null
+                                                    const bSafePrice20 = bCost !== null ? Math.ceil(bCost / 0.8) : null
+
+                                                    return (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, height: 0 }}
+                                                            animate={{ opacity: 1, height: 'auto' }}
+                                                            exit={{ opacity: 0, height: 0 }}
+                                                            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                                                            className="overflow-hidden will-change-[height,opacity]"
+                                                        >
+                                                            <div className="pt-3 mt-2.5 border-t border-neutral-100 space-y-3">
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                                                    <div>
+                                                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">1. Precio de Venta $</label>
+                                                                        <div className="relative">
+                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                            <NumberInput min="0" placeholder={`Hereda $${math.cashPrice.toFixed(2)}`} value={variantInput.priceOverride} onChangeValue={(val) => updateVariantInput('priceOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-950 rounded-xl pl-6 pr-2.5 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono text-left tabular-nums" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">2. Margen Operativo $</label>
+                                                                        <div className="relative">
+                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                            <NumberInput min="0" placeholder={`Hereda $${math.markup.toFixed(2)}`} value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-950 rounded-xl pl-6 pr-2.5 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono text-left tabular-nums" />
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">3. Precio Tachado $</label>
+                                                                        <div className="relative">
+                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                            <NumberInput
+                                                                                min="0"
+                                                                                placeholder={math.rawCompareAt > 0 ? `Hereda $${math.rawCompareAt.toFixed(2)}` : '0.00 (Opcional)'}
+                                                                                value={variantInput.compareAtOverride}
+                                                                                onChangeValue={(val) => updateVariantInput('compareAtOverride', val)}
+                                                                                className={`w-full bg-neutral-50/70 border focus:bg-white rounded-xl pl-6 pr-14 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono text-left tabular-nums ${bCompareInvalid
+                                                                                        ? 'border-amber-400 ring-2 ring-amber-400/15 focus:border-amber-500'
+                                                                                        : 'border-neutral-200/80 focus:border-neutral-950'
+                                                                                    }`}
+                                                                            />
+                                                                            {bCompareValid && (
+                                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/80 font-mono text-[9px] font-bold">
+                                                                                    -{bPromoPct}%
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">4. Costo por Unidad $</label>
+                                                                        <div className="relative">
+                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                            <NumberInput min="0" placeholder={math.unitCost !== null ? `Hereda $${math.unitCost.toFixed(2)}` : '0.00 (Opcional)'} value={variantInput.costOverride} onChangeValue={(val) => updateVariantInput('costOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-950 rounded-xl pl-6 pr-2.5 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono text-left tabular-nums" />
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
+
+                                                                {/* Resumen en Vivo del Lote a Generar */}
+                                                                {(bPrice > 0 || bCost !== null) && (
+                                                                    <div className="px-3.5 py-2.5 rounded-xl bg-neutral-50 border border-neutral-200/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                                                                        <div className="flex items-center gap-3 flex-wrap">
+                                                                            <span className="text-[11px] text-neutral-500">
+                                                                                Vitrina: <b className="font-mono text-neutral-900">${bList.toFixed(2)}</b>
+                                                                            </span>
+                                                                            {bMarkup > 0 && (
+                                                                                <span className="text-[11px] text-neutral-500">
+                                                                                    · En divisas: <b className="font-mono text-emerald-700">${bPrice.toFixed(2)}</b>
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {bProfit !== null && bMarginPct !== null && (
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-[11px] text-neutral-500">Tu ganancia:</span>
+                                                                                <span className={`font-mono font-black text-xs px-2 py-0.5 rounded-md border ${bProfit < 0
+                                                                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                                                    }`}>
+                                                                                    {bProfit >= 0 ? `+$${bProfit.toFixed(2)} (${bMarginPct}%)` : `-$${Math.abs(bProfit).toFixed(2)} · En pérdida`}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Alerta Roja si el Lote se está configurando a pérdida */}
+                                                                {bProfit !== null && bProfit < 0 && bCost !== null && bSafePrice20 !== null && (
+                                                                    <div className="p-3 rounded-xl bg-rose-50/90 border border-rose-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs text-rose-900">
+                                                                        <div className="flex items-start gap-2">
+                                                                            <AlertTriangle size={14} className="text-rose-600 shrink-0 mt-0.5" />
+                                                                            <p className="leading-snug">
+                                                                                <b>Precio menor al costo en este lote:</b> Vendes a <b className="font-mono">${bPrice.toFixed(2)}</b> pero cuesta <b className="font-mono">${bCost.toFixed(2)}</b> (pierdes <b className="font-mono">${Math.abs(bProfit).toFixed(2)}</b> por unidad).
+                                                                            </p>
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => updateVariantInput('priceOverride', bSafePrice20)}
+                                                                            className="px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-black text-white text-[10px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                                                        >
+                                                                            Subir precio a ${bSafePrice20.toFixed(2)} (+20%)
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Alerta Ámbar si el Tachado del Lote es inválido */}
+                                                                {bCompareInvalid && (
+                                                                    <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs text-amber-950">
+                                                                        <div className="flex items-start gap-2">
+                                                                            <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                                                                            <p className="leading-snug">
+                                                                                <b>La oferta no se verá en estas tallas:</b> El precio tachado (<b className="font-mono">${bCompare.toFixed(2)}</b>) debe superar al precio en vitrina (<b className="font-mono">${bList.toFixed(2)}</b>).
+                                                                            </p>
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => updateVariantInput('compareAtOverride', bSuggestedCompare)}
+                                                                            className="px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-black text-white text-[10px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                                                        >
+                                                                            Ajustar a ${bSuggestedCompare.toFixed(2)}
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            <div>
-                                                                <label className="text-[10px] font-bold text-rose-700 uppercase tracking-wider mb-1 block font-mono">Tachado propio $</label>
-                                                                <div className="relative">
-                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rose-400 font-bold text-xs font-mono">$</span>
-                                                                    <NumberInput min="0" placeholder="Hereda base" value={variantInput.compareAtOverride} onChangeValue={(val) => updateVariantInput('compareAtOverride', val)} className="w-full bg-neutral-50/70 border border-rose-200/70 focus:bg-white focus:border-rose-400 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-rose-400 font-mono" />
-                                                                </div>
-                                                            </div>
-                                                            <div>
-                                                                <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block font-mono">Margen propio $</label>
-                                                                <div className="relative">
-                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
-                                                                    <NumberInput min="0" placeholder="Hereda base" value={variantInput.penaltyOverride} onChangeValue={(val) => updateVariantInput('penaltyOverride', val)} className="w-full bg-neutral-50/70 border border-neutral-200/80 focus:bg-white focus:border-neutral-900 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
+                                                        </motion.div>
+                                                    )
+                                                })()}
                                             </AnimatePresence>
                                         </div>
 
-                                        {/* 🚀 BOTÓN 2: GENERADOR INTELIGENTE (BREVE, CONCENTRADO Y CON CONTEO EN VIVO) */}
+                                        {/* 🚀 BOTÓN 2: GENERADOR INTELIGENTE */}
                                         <button
                                             type="button"
                                             id="tour-step-2-generate"
@@ -2462,19 +3336,18 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                         </button>
                                     </div>
 
-                                    {/* LISTADO DE VARIANTES CREADAS CON ANCLAJE SPOTLIGHT */}
+                                    {/* LISTADO DE VARIANTES CREADAS CON AUDITORÍA FINANCIERA INDIVIDUAL POR SKU */}
                                     <div
                                         id="tour-step-2-matrix"
                                         className={`space-y-3 scroll-mt-28 md:scroll-mt-32 p-3 rounded-xl transition-all ${currentTargetId === 'tour-step-2-matrix'
-                                            ? 'relative z-[60] bg-white ring-4 ring-neutral-900/15 shadow-2xl pointer-events-auto'
-                                            : ''
+                                                ? 'relative z-[60] bg-white ring-4 ring-neutral-900/15 shadow-2xl pointer-events-auto'
+                                                : ''
                                             }`}
                                     >
                                         <div className="flex justify-between items-center mb-3 mt-2 px-1">
                                             <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider">Matriz de SKUs</h4>
                                             <span className="bg-neutral-100 border border-neutral-200/60 px-2.5 py-0.5 rounded text-[10px] font-bold text-neutral-800 font-mono">{variants.length} Creadas</span>
                                         </div>
-
 
                                         {variants.length === 0 ? (
                                             <div className="text-center py-10 border border-dashed border-neutral-300 rounded-lg bg-neutral-50/30 flex flex-col items-center justify-center space-y-2">
@@ -2483,226 +3356,525 @@ export default function ProductEditor({ productId, rates, storeSettings }: Produ
                                             </div>
                                         ) : (
                                             <div className="space-y-2.5">
-                                                {variants.map((v, i) => (
-                                                    <div key={v.id || i} className="flex flex-col bg-white border border-neutral-200/50 hover:border-neutral-400 rounded-lg transition-colors animate-in fade-in shadow-xs overflow-hidden">
+                                                {variants.map((v, i) => {
+                                                   // 💎 MATEMÁTICA INDIVIDUAL DE ESTA VARIANTE (Hereda del padre lo que sea null)
+                                                    const hasCustomPrice = Number(v.override_usd_price || 0) > 0
+                                                    const hasCustomPenalty = v.override_usd_penalty !== null && v.override_usd_penalty !== undefined && v.override_usd_penalty !== ''
+                                                    const hasCustomCompare = Number(v.override_compare_at_usd || 0) > 0
+                                                    const hasCustomCost = Number(v.override_cost_usd || 0) > 0
 
-                                                        {/* Cabecera SKU */}
-                                                        <div className="flex items-center justify-between p-3.5 cursor-pointer select-none" onClick={() => setExpandedVariantId(expandedVariantId === v.id ? null : v.id)}>
-                                                            <div className="flex items-center gap-3.5 min-w-0">
-                                                                <div className="w-10 h-10 rounded bg-neutral-50 border border-neutral-200/60 overflow-hidden shrink-0 flex items-center justify-center relative shadow-xs">
-                                                                    {v.variant_image ? (
-                                                                        <Image
-                                                                            src={getOptimizedUrl(v.variant_image)}
-                                                                            alt=""
-                                                                            fill
-                                                                            sizes="40px"
-                                                                            className="object-cover"
-                                                                        />
-                                                                    ) : (!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') ? (
-                                                                        <span className="text-[11px] font-mono font-bold text-neutral-700 uppercase">
-                                                                            {v.size}
-                                                                        </span>
-                                                                    ) : (
-                                                                        <div className="w-full h-full" style={{ backgroundColor: v.color_hex }} />
-                                                                    )}
-                                                                </div>
-                                                                <div className="min-w-0 space-y-0.5">
-                                                                    <div className="flex items-center gap-2">
-                                                                        {/* 🚀 ELITE: Renderizado inteligente uni/bi-color */}
-                                                                        {renderVariantColor(v.color_hex)}
-                                                                        <p className="font-bold text-xs text-neutral-900 truncate">
-                                                                            {(!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') && v.color_name === 'Talla'
-                                                                                ? `Talla ${v.size}`
-                                                                                : v.color_name}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="flex flex-wrap items-center gap-1.5">
-                                                                        {!((!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') && v.color_name === 'Talla') && (
-                                                                            <span className="text-[10px] font-mono font-bold bg-neutral-100 border border-neutral-200/70 text-neutral-700 px-2 py-0.5 rounded leading-none">{v.size}</span>
-                                                                        )}
-                                                                        {v.sku && (
-                                                                            <span className="text-[9px] font-mono font-bold tabular-nums uppercase tracking-widest bg-neutral-100 text-neutral-600 border border-neutral-200/60 px-1.5 py-0.5 rounded leading-none">
-                                                                                {v.sku}
-                                                                            </span>
-                                                                        )}
-                                                                        {/* 💎 DISTINCIÓN ÓPTICA PURA: Solo se pinta amarilla si tiene un precio propio real > 0 */}
-                                                                        {Number(v.override_usd_price || 0) > 0 ? (
-                                                                            <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 border border-amber-300 rounded flex items-center gap-1">
-                                                                                <span>Precio Fijo: ${Number(v.override_usd_price).toFixed(2)}</span>
-                                                                                <span className="text-[8px] opacity-70 font-sans font-normal">(Base: ${Number(formData.price || 0).toFixed(2)})</span>
+                                                    const vCashPrice = hasCustomPrice ? Number(v.override_usd_price) : math.cashPrice
+                                                    const vMarkup = hasCustomPenalty ? Number(v.override_usd_penalty) : math.markup
+                                                    const vListPrice = Number((vCashPrice + vMarkup).toFixed(2))
+                                                    const vCompareAt = hasCustomCompare ? Number(v.override_compare_at_usd) : math.rawCompareAt
+
+                                                    const vIsCompareValid = vCompareAt > vListPrice && vListPrice > 0
+                                                    // Es inválido si tiene un tachado propio <= vListPrice, O si hereda un tachado del padre que quedó superado por el precio propio de esta variante
+                                                    const vIsCompareInvalid = vCompareAt > 0 && vCompareAt <= vListPrice && (hasCustomCompare || hasCustomPrice || hasCustomPenalty)
+                                                    const vSuggestedCompareAt = Math.ceil(vListPrice * 1.15)
+                                                    const vPromoPct = vIsCompareValid ? Math.round(((vCompareAt - vListPrice) / vCompareAt) * 100) : 0
+
+                                                    const vUnitCost = hasCustomCost ? Number(v.override_cost_usd) : math.unitCost
+                                                    const vNetProfit = vUnitCost !== null && vCashPrice > 0 ? Number((vCashPrice - vUnitCost).toFixed(2)) : null
+                                                    const vMarginPct = vUnitCost !== null && vCashPrice > 0 ? Number((((vCashPrice - vUnitCost) / vCashPrice) * 100).toFixed(1)) : null
+                                                    const vSafePrice20 = vUnitCost !== null ? Math.ceil(vUnitCost / 0.8) : null
+
+                                                    // Auditoría si un descuento activo (Campaña o Mayorista) perfora el costo específico de esta variante
+                                                    const activeWholesalePct = formData.wholesale_active && Number(formData.wholesale_discount_pct) > 0
+                                                        ? Number(formData.wholesale_discount_pct)
+                                                        : (!formData.wholesale_active && storeSettings?.wholesaleConfig?.active && Number(storeSettings?.wholesaleConfig?.discount_percentage) > 0)
+                                                            ? Number(storeSettings.wholesaleConfig.discount_percentage)
+                                                            : 0
+                                                    const maxDiscOnVarPct = Math.max(math.campaignDiscountPct, math.bogoEffectiveDiscountPct, activeWholesalePct)
+                                                    const vDiscountedRev = Number((vCashPrice * (1 - maxDiscOnVarPct / 100)).toFixed(2))
+                                                    const vHasDiscountLoss = vUnitCost !== null && vCashPrice >= vUnitCost && maxDiscOnVarPct > 0 && vDiscountedRev < vUnitCost
+                                                    const vDiscountLossUsd = vHasDiscountLoss && vUnitCost !== null ? Number((vUnitCost - vDiscountedRev).toFixed(2)) : 0
+
+                                                    const lossHelpKey = `var_loss_${v.id}`
+                                                    const compareHelpKey = `var_cmp_${v.id}`
+
+                                                    return (
+                                                        <div
+                                                            key={v.id || i}
+                                                            className={`flex flex-col bg-white border rounded-xl transition-colors animate-in fade-in shadow-xs overflow-hidden ${
+                                                                (vNetProfit !== null && vNetProfit < 0)
+                                                                    ? 'border-rose-300 hover:border-rose-400'
+                                                                    : vIsCompareInvalid
+                                                                        ? 'border-amber-300 hover:border-amber-400'
+                                                                        : 'border-neutral-200/60 hover:border-neutral-400'
+                                                            }`}
+                                                        >
+                                                            {/* Cabecera SKU con Píldoras de Precio y Ganancia en Vivo */}
+                                                            <div className="flex items-center justify-between p-3.5 cursor-pointer select-none" onClick={() => setExpandedVariantId(expandedVariantId === v.id ? null : v.id)}>
+                                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                                    <div className="w-10 h-10 rounded-lg bg-neutral-50 border border-neutral-200/60 overflow-hidden shrink-0 flex items-center justify-center relative shadow-xs">
+                                                                        {v.variant_image ? (
+                                                                            <Image
+                                                                                src={getOptimizedUrl(v.variant_image)}
+                                                                                alt=""
+                                                                                fill
+                                                                                sizes="40px"
+                                                                                className="object-cover"
+                                                                            />
+                                                                        ) : (!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') ? (
+                                                                            <span className="text-[11px] font-mono font-bold text-neutral-700 uppercase">
+                                                                                {v.size}
                                                                             </span>
                                                                         ) : (
-                                                                            <span className="text-[9px] font-mono text-neutral-400">
-                                                                                Hereda ${Number(formData.price || 0).toFixed(2)}
-                                                                            </span>
+                                                                            <div className="w-full h-full" style={{ backgroundColor: v.color_hex }} />
                                                                         )}
+                                                                    </div>
+                                                                    <div className="min-w-0 space-y-1">
+                                                                        <div className="flex items-center gap-2">
+                                                                            {renderVariantColor(v.color_hex)}
+                                                                            <p className="font-bold text-xs text-neutral-900 truncate">
+                                                                                {(!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') && v.color_name === 'Talla'
+                                                                                    ? `Talla ${v.size}`
+                                                                                    : v.color_name}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="flex flex-wrap items-center gap-1.5">
+                                                                            {!((!v.color_hex || v.color_hex === 'transparent' || v.color_hex === '#transparent') && v.color_name === 'Talla') && (
+                                                                                <span className="text-[10px] font-mono font-bold bg-neutral-100 border border-neutral-200/70 text-neutral-700 px-2 py-0.5 rounded leading-none">{v.size}</span>
+                                                                            )}
+                                                                            {v.sku && (
+                                                                                <span className="text-[9px] font-mono font-bold tabular-nums uppercase tracking-widest bg-neutral-100 text-neutral-600 border border-neutral-200/60 px-1.5 py-0.5 rounded leading-none">
+                                                                                    {v.sku}
+                                                                                </span>
+                                                                            )}
 
+                                                                            {hasCustomPrice ? (
+                                                                                <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100/80 px-2 py-0.5 border border-amber-300 rounded flex items-center gap-1 leading-none">
+                                                                                    <span>Precio Fijo: ${vCashPrice.toFixed(2)}</span>
+                                                                                    <span className="text-[8px] opacity-70 font-sans font-normal">(Base: ${math.cashPrice.toFixed(2)})</span>
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-[9px] font-mono text-neutral-400">
+                                                                                    Hereda ${math.cashPrice.toFixed(2)}
+                                                                                </span>
+                                                                            )}
+
+                                                                            {vNetProfit !== null && (
+                                                                                <span className={`text-[9.5px] font-mono font-bold px-2 py-0.5 rounded border leading-none ${
+                                                                                    vNetProfit < 0
+                                                                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                                                }`}>
+                                                                                    {vNetProfit >= 0 ? `+$${vNetProfit.toFixed(2)} (${vMarginPct}%)` : `-$${Math.abs(vNetProfit).toFixed(2)} · En pérdida`}
+                                                                                </span>
+                                                                            )}
+
+                                                                            {vIsCompareInvalid && (
+                                                                                <span className="text-[9.5px] font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 leading-none">
+                                                                                    ⚠️ Tachado inválido
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
+
+                                                                <div className="flex items-center gap-3 shrink-0">
+                                                                    <div className="text-right hidden sm:block">
+                                                                        <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider">Cantidad</p>
+                                                                        <p className="font-mono font-bold text-xs text-neutral-950 leading-none mt-0.5">{v.stock}</p>
+                                                                    </div>
+                                                                    <div className="w-px h-6 bg-neutral-200 hidden sm:block" />
+                                                                    <div className={`px-2 py-1 rounded text-neutral-700 transition-colors flex items-center gap-1 ${expandedVariantId === v.id ? 'bg-neutral-100 font-bold text-neutral-950' : 'hover:bg-neutral-100 font-medium'}`}>
+                                                                        <span className="text-[10px] font-bold hidden sm:inline">Editar</span>
+                                                                        {expandedVariantId === v.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                                    </div>
+                                                                    <button onClick={(e) => { e.stopPropagation(); removeVariant(v.id) }} className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"><Trash2 size={15} /></button>
+                                                                </div>
                                                             </div>
 
-                                                            <div className="flex items-center gap-3 shrink-0">
-                                                                <div className="text-right hidden sm:block">
-                                                                    <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider">Cantidad</p>
-                                                                    <p className="font-mono font-bold text-xs text-neutral-950 leading-none mt-0.5">{v.stock}</p>
-                                                                </div>
-                                                                <div className="w-px h-6 bg-neutral-200 hidden sm:block" />
-                                                                <div className={`px-2 py-1 rounded text-neutral-700 transition-colors flex items-center gap-1 ${expandedVariantId === v.id ? 'bg-neutral-100 font-bold text-neutral-950' : 'hover:bg-neutral-100 font-medium'}`}>
-                                                                    <span className="text-[10px] font-bold hidden sm:inline">Editar</span>
-                                                                    {expandedVariantId === v.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                                                </div>
-                                                                <button onClick={(e) => { e.stopPropagation(); removeVariant(v.id) }} className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"><Trash2 size={15} /></button>
-                                                            </div>
-                                                        </div>
+                                                            {/* Desplegable de Edición Fina de la Variante */}
+                                                            <AnimatePresence initial={false}>
+                                                                {expandedVariantId === v.id && (
+                                                                    <motion.div
+                                                                        initial={{ height: 0, opacity: 0 }}
+                                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                                                                        className="border-t border-neutral-200/50 bg-neutral-50/50 overflow-hidden will-change-[height,opacity]"
+                                                                    >
+                                                                        <div className="p-4 space-y-4">
+                                                                            <div className="flex flex-col sm:flex-row gap-4">
+                                                                                {/* Foto Variante */}
+                                                                                <div className="shrink-0 flex flex-col gap-1.5 group relative">
+                                                                                    <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider">Foto</label>
+                                                                                    <input type="file" id={`file-${v.id}`} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant', v.id)} />
 
-                                                        {/* Desplegable de Edición Fina de la Variante */}
-                                                        <AnimatePresence>
-                                                            {expandedVariantId === v.id && (
-                                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-neutral-200/50 bg-neutral-50/60">
-                                                                    <div className="p-4 space-y-4">
-
-                                                                        <div className="flex flex-col sm:flex-row gap-4">
-                                                                            {/* Foto Variante */}
-                                                                            <div className="shrink-0 flex flex-col gap-1.5 group relative">
-                                                                                <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider">Foto</label>
-                                                                                <input type="file" id={`file-${v.id}`} className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files, 'variant', v.id)} />
-
-                                                                                {v.variant_image ? (
-                                                                                    <div className="relative w-14 h-14 rounded border border-neutral-200/60 overflow-hidden bg-white shrink-0 flex items-center justify-center shadow-xs">
-                                                                                        <Image
-                                                                                            src={getOptimizedUrl(v.variant_image)}
-                                                                                            alt=""
-                                                                                            fill
-                                                                                            sizes="56px"
-                                                                                            className="object-cover"
-                                                                                        />
+                                                                                    {v.variant_image ? (
+                                                                                        <div className="relative w-14 h-14 rounded-lg border border-neutral-200/60 overflow-hidden bg-white shrink-0 flex items-center justify-center shadow-xs">
+                                                                                            <Image
+                                                                                                src={getOptimizedUrl(v.variant_image)}
+                                                                                                alt=""
+                                                                                                fill
+                                                                                                sizes="56px"
+                                                                                                className="object-cover"
+                                                                                            />
+                                                                                            <button
+                                                                                                onClick={() => document.getElementById(`file-${v.id}`)?.click()}
+                                                                                                className="absolute inset-0 bg-neutral-950/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white cursor-pointer"
+                                                                                                title="Cambiar Foto"
+                                                                                            >
+                                                                                                {uploading ? <Loader2 className="animate-spin" size={14} /> : <ImageIcon size={16} />}
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    ) : (
                                                                                         <button
                                                                                             onClick={() => document.getElementById(`file-${v.id}`)?.click()}
-                                                                                            className="absolute inset-0 bg-neutral-950/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white cursor-pointer"
-                                                                                            title="Cambiar Foto"
+                                                                                            className="w-14 h-14 rounded-lg border border-dashed border-neutral-300 bg-white hover:border-neutral-500 flex items-center justify-center overflow-hidden transition-all text-neutral-600 hover:text-neutral-950 shadow-xs"
+                                                                                            title="Añadir Foto"
                                                                                         >
-                                                                                            {uploading ? <Loader2 className="animate-spin" size={14} /> : <ImageIcon size={16} />}
-                                                                                        </button>
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <button
-                                                                                        onClick={() => document.getElementById(`file-${v.id}`)?.click()}
-                                                                                        className="w-14 h-14 rounded border border-dashed border-neutral-300 bg-white hover:border-neutral-500 flex items-center justify-center overflow-hidden transition-all text-neutral-600 hover:text-neutral-950 shadow-xs"
-                                                                                        title="Añadir Foto"
-                                                                                    >
-                                                                                        {uploading ? <Loader2 className="animate-spin" size={14} /> : <ImagePlus size={16} />}
-                                                                                    </button>
-                                                                                )}
-                                                                            </div>
-
-                                                                            {/* Atributos específicos del SKU */}
-                                                                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                                                <div>
-                                                                                    <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">Talla / Identificador</label>
-                                                                                    <input type="text" value={v.size} onChange={(e) => updateVariantOverride(v.id, 'size', e.target.value)} className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors" />
-                                                                                </div>
-                                                                                <div>
-                                                                                    <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">Stock</label>
-                                                                                    <NumberInput min="0" value={v.stock} onChangeValue={(val) => updateVariantOverride(v.id, 'stock', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors font-mono" />
-                                                                                </div>
-                                                                                <div>
-                                                                                    <div className="flex justify-between items-center mb-1">
-                                                                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider block">SKU Variante</label>
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => updateVariantOverride(v.id, 'sku', generateSmartSKU(formData.category, `${formData.name || 'PRD'} ${v.color_name} ${v.size}`))}
-                                                                                            className="text-[9px] font-mono text-neutral-500 hover:text-neutral-950 underline cursor-pointer"
-                                                                                        >
-                                                                                            Generar
-                                                                                        </button>
-                                                                                    </div>
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        value={v.sku || ''}
-                                                                                        onChange={(e) => updateVariantOverride(v.id, 'sku', e.target.value.toUpperCase())}
-                                                                                        placeholder="AUTO"
-                                                                                        className="w-full bg-white border border-neutral-200/50 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold tabular-nums uppercase tracking-widest text-neutral-900 outline-none transition-colors placeholder:text-neutral-300"
-                                                                                    />
-                                                                                </div>
-                                                                                {/* 🚀 ELITE: Solo muestra el editor de Color si la variante NO es de "Solo Tallas" */}
-                                                                                {(v.color_name !== 'Talla' || (v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent')) && (
-                                                                                    <div className="sm:col-span-3 bg-white p-3 rounded-xl border border-neutral-200/70 space-y-2">
-                                                                                        <div className="flex items-center justify-between">
-                                                                                            <span className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider font-mono">
-                                                                                                Ajustar Color del SKU
-                                                                                            </span>
-                                                                                            {variants.filter(item => item.color_name === v.color_name).length > 1 && (
-                                                                                                <span className="text-[9px] font-mono font-bold text-neutral-400">
-                                                                                                    Grupo: {v.color_name} ({variants.filter(item => item.color_name === v.color_name).length} tallas)
-                                                                                                </span>
-                                                                                            )}
-                                                                                        </div>
-
-                                                                                        <EliteVariantColorPicker
-                                                                                            useColor={v.color_hex !== 'transparent' && v.color_hex !== '#transparent'}
-                                                                                            onToggleColor={(checked: boolean) => updateVariantOverride(v.id, 'color_hex', checked ? '#000000' : 'transparent')}
-                                                                                            colorName={v.color_name}
-                                                                                            colorHex={v.color_hex === 'transparent' || v.color_hex === '#transparent' ? '#000000' : v.color_hex}
-                                                                                            onChange={(name: string, hex: string) => {
-                                                                                                handleVariantColorChangeWithGuard(v, name, hex);
-                                                                                            }}
-                                                                                        />
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {/* Sobrescribir Precios por SKU */}
-                                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-3.5 border-t border-neutral-200/50">
-                                                                            <div>
-                                                                                <div className="flex items-center justify-between mb-1">
-                                                                                    <label className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider font-mono">Precio Propio $</label>
-                                                                                    {v.override_usd_price !== null && v.override_usd_price !== undefined && v.override_usd_price !== '' && (
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => updateVariantOverride(v.id, 'override_usd_price', null)}
-                                                                                            className="text-[9px] font-mono text-neutral-500 hover:text-neutral-950 underline cursor-pointer"
-                                                                                            title="Restablecer para que adopte el precio base"
-                                                                                        >
-                                                                                            Heredar Base (${Number(formData.price || 0).toFixed(2)})
+                                                                                            {uploading ? <Loader2 className="animate-spin" size={14} /> : <ImagePlus size={16} />}
                                                                                         </button>
                                                                                     )}
                                                                                 </div>
-                                                                                <div className="relative">
-                                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
-                                                                                    <NumberInput min="0" placeholder={`Hereda $${Number(formData.price || 0).toFixed(2)}`} value={v.override_usd_price ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_price', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
+
+                                                                                {/* Atributos específicos del SKU */}
+                                                                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                                                    <div>
+                                                                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">Talla / Identificador</label>
+                                                                                        <input type="text" value={v.size} onChange={(e) => updateVariantOverride(v.id, 'size', e.target.value)} className="w-full bg-white border border-neutral-200/70 focus:border-neutral-950 rounded-xl px-3 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors" />
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block">Stock</label>
+                                                                                        <NumberInput min="0" value={v.stock} onChangeValue={(val) => updateVariantOverride(v.id, 'stock', val)} className="w-full bg-white border border-neutral-200/70 focus:border-neutral-950 rounded-xl px-3 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors font-mono text-left tabular-nums" />
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <div className="flex justify-between items-center mb-1">
+                                                                                            <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider block">SKU Variante</label>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => updateVariantOverride(v.id, 'sku', generateSmartSKU(formData.category, `${formData.name || 'PRD'} ${v.color_name} ${v.size}`))}
+                                                                                                className="text-[9px] font-mono text-neutral-500 hover:text-neutral-950 underline cursor-pointer"
+                                                                                            >
+                                                                                                Generar
+                                                                                            </button>
+                                                                                        </div>
+                                                                                        <input
+                                                                                            type="text"
+                                                                                            value={v.sku || ''}
+                                                                                            onChange={(e) => updateVariantOverride(v.id, 'sku', e.target.value.toUpperCase())}
+                                                                                            placeholder="AUTO"
+                                                                                            className="w-full bg-white border border-neutral-200/70 focus:border-neutral-950 rounded-xl px-3 py-2 text-xs font-mono font-bold tabular-nums uppercase tracking-widest text-neutral-900 outline-none transition-colors placeholder:text-neutral-300"
+                                                                                        />
+                                                                                    </div>
+
+                                                                                    {(v.color_name !== 'Talla' || (v.color_hex && v.color_hex !== 'transparent' && v.color_hex !== '#transparent')) && (
+                                                                                        <div className="sm:col-span-3 bg-white p-3 rounded-xl border border-neutral-200/70 space-y-2">
+                                                                                            <div className="flex items-center justify-between">
+                                                                                                <span className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider font-mono">
+                                                                                                    Ajustar Color del SKU
+                                                                                                </span>
+                                                                                                {variants.filter(item => item.color_name === v.color_name).length > 1 && (
+                                                                                                    <span className="text-[9px] font-mono font-bold text-neutral-400">
+                                                                                                        Grupo: {v.color_name} ({variants.filter(item => item.color_name === v.color_name).length} tallas)
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </div>
+
+                                                                                            <EliteVariantColorPicker
+                                                                                                useColor={v.color_hex !== 'transparent' && v.color_hex !== '#transparent'}
+                                                                                                onToggleColor={(checked: boolean) => updateVariantOverride(v.id, 'color_hex', checked ? '#000000' : 'transparent')}
+                                                                                                colorName={v.color_name}
+                                                                                                colorHex={v.color_hex === 'transparent' || v.color_hex === '#transparent' ? '#000000' : v.color_hex}
+                                                                                                onChange={(name: string, hex: string) => {
+                                                                                                    handleVariantColorChangeWithGuard(v, name, hex);
+                                                                                                }}
+                                                                                            />
+                                                                                        </div>
+                                                                                    )}
                                                                                 </div>
                                                                             </div>
-                                                                            <div>
-                                                                                <label className="text-[10px] font-bold text-rose-800 uppercase tracking-wider mb-1 block font-mono">Tachado Propio $</label>
-                                                                                <div className="relative">
-                                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs font-mono">$</span>
-                                                                                    <NumberInput min="0" placeholder="Heredado" value={v.override_compare_at_usd ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_compare_at_usd', val)} className="w-full bg-white border border-rose-200/70 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-rose-700 outline-none transition-colors placeholder:text-rose-400 font-mono" />
+
+                                                                            {/* 💎 PRECIOS Y COSTO PROPIO POR SKU (CABECERAS DE 1 SOLA LÍNEA h-4 PARA ALINEACIÓN HORIZONTAL PERFECTA) */}
+                                                                            <div className="pt-3.5 border-t border-neutral-200/60 space-y-3">
+                                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-start">
+                                                                                    {/* 1. Precio Propio */}
+                                                                                    <div>
+                                                                                        <div className="h-4 flex items-center justify-between gap-1 mb-1.5 whitespace-nowrap">
+                                                                                            <label className="text-[10px] font-bold text-neutral-800 uppercase tracking-wider truncate">
+                                                                                                1. Precio Propio
+                                                                                            </label>
+                                                                                            {hasCustomPrice && (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => updateVariantOverride(v.id, 'override_usd_price', null)}
+                                                                                                    className="text-[9px] font-mono text-neutral-500 hover:text-neutral-950 underline cursor-pointer shrink-0"
+                                                                                                    title={`Volver a heredar $${math.cashPrice.toFixed(2)}`}
+                                                                                                >
+                                                                                                    Heredar (${math.cashPrice.toFixed(2)})
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="relative">
+                                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                                            <NumberInput min="0" placeholder={`Hereda $${math.cashPrice.toFixed(2)}`} value={v.override_usd_price ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_price', val)} className="w-full bg-white border border-neutral-200/80 focus:border-neutral-950 rounded-xl pl-6 pr-2.5 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono text-left tabular-nums" />
+                                                                                        </div>
+                                                                                    </div>
+{/* 2. Margen Propio (Simétrico y sin truncamiento "...") */}
+                                                                                    <div>
+                                                                                        <div className="h-4 flex items-center justify-between gap-1 mb-1.5 whitespace-nowrap">
+                                                                                            <label className="text-[10px] font-bold text-neutral-800 uppercase tracking-wider">
+                                                                                                2. Margen Propio
+                                                                                            </label>
+                                                                                            {hasCustomPenalty && (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => updateVariantOverride(v.id, 'override_usd_penalty', null)}
+                                                                                                    className="text-[9px] font-mono text-neutral-500 hover:text-neutral-950 underline cursor-pointer shrink-0"
+                                                                                                    title={`Volver a heredar $${math.markup.toFixed(2)}`}
+                                                                                                >
+                                                                                                    Heredar (${math.markup.toFixed(2)})
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="relative">
+                                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                                            <NumberInput min="0" placeholder={`Hereda $${math.markup.toFixed(2)}`} value={v.override_usd_penalty ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_penalty', val)} className="w-full bg-white border border-neutral-200/80 focus:border-neutral-950 rounded-xl pl-6 pr-2.5 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono text-left tabular-nums" />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    {/* 3. Tachado Propio */}
+                                                                                    <div>
+                                                                                        <div className="h-4 flex items-center justify-between gap-1 mb-1.5 whitespace-nowrap">
+                                                                                            <label className="text-[10px] font-bold text-neutral-800 uppercase tracking-wider truncate">
+                                                                                                3. Tachado Propio
+                                                                                            </label>
+                                                                                            {hasCustomCompare && (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => updateVariantOverride(v.id, 'override_compare_at_usd', null)}
+                                                                                                    className="text-[9px] font-mono text-neutral-500 hover:text-neutral-950 underline cursor-pointer shrink-0"
+                                                                                                >
+                                                                                                    {math.rawCompareAt > 0 ? `Heredar ($${math.rawCompareAt.toFixed(2)})` : 'Limpiar'}
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="relative">
+                                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                                            <NumberInput
+                                                                                                min="0"
+                                                                                                placeholder={math.rawCompareAt > 0 ? `Hereda $${math.rawCompareAt.toFixed(2)}` : '0.00 (Opcional)'}
+                                                                                                value={v.override_compare_at_usd ?? ''}
+                                                                                                onChangeValue={(val) => updateVariantOverride(v.id, 'override_compare_at_usd', val)}
+                                                                                                className={`w-full bg-white border rounded-xl pl-6 pr-14 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono text-left tabular-nums ${
+                                                                                                    vIsCompareInvalid
+                                                                                                        ? 'border-amber-400 ring-2 ring-amber-400/15 focus:border-amber-500'
+                                                                                                        : 'border-neutral-200/80 focus:border-neutral-950'
+                                                                                                }`}
+                                                                                            />
+                                                                                            {vIsCompareValid && (
+                                                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200/80 font-mono text-[9px] font-bold">
+                                                                                                    -{vPromoPct}%
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {/* 4. Costo Propio */}
+                                                                                    <div>
+                                                                                        <div className="h-4 flex items-center justify-between gap-1 mb-1.5 whitespace-nowrap">
+                                                                                            <label className="text-[10px] font-bold text-neutral-800 uppercase tracking-wider truncate">
+                                                                                                4. Costo Propio
+                                                                                            </label>
+                                                                                            {hasCustomCost && (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => updateVariantOverride(v.id, 'override_cost_usd', null)}
+                                                                                                    className="text-[9px] font-mono text-neutral-500 hover:text-neutral-950 underline cursor-pointer shrink-0"
+                                                                                                >
+                                                                                                    {math.unitCost !== null ? `Heredar ($${math.unitCost.toFixed(2)})` : 'Limpiar'}
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="relative">
+                                                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs font-mono">$</span>
+                                                                                            <NumberInput min="0" placeholder={math.unitCost !== null ? `Hereda $${math.unitCost.toFixed(2)}` : '0.00 (Opcional)'} value={v.override_cost_usd ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_cost_usd', val)} className="w-full bg-white border border-neutral-200/80 focus:border-neutral-950 rounded-xl pl-6 pr-2.5 py-2 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono text-left tabular-nums" />
+                                                                                        </div>
+                                                                                    </div>
                                                                                 </div>
-                                                                            </div>
-                                                                            <div>
-                                                                                <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-wider mb-1 block font-mono">Margen Propio $</label>
-                                                                                <div className="relative">
-                                                                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-xs font-mono">$</span>
-                                                                                    <NumberInput min="0" placeholder="Heredado" value={v.override_usd_penalty ?? ''} onChangeValue={(val) => updateVariantOverride(v.id, 'override_usd_penalty', val)} className="w-full bg-white border border-neutral-200/50 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-bold text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 font-mono" />
+
+                                                                                {/* Barra Resumen de Precio y Ganancia de esta Variante */}
+                                                                                <div className="px-3.5 py-2.5 rounded-xl bg-white border border-neutral-200/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                                                                                    <div className="flex items-center gap-3 flex-wrap">
+                                                                                        <span className="text-[11px] text-neutral-500">
+                                                                                            Precio en vitrina: <b className="font-mono text-neutral-900">${vListPrice.toFixed(2)}</b>
+                                                                                            <span className="text-[10px] font-mono text-neutral-400 ml-1">
+                                                                                                (Bs. {(vListPrice * activeRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                                                                            </span>
+                                                                                        </span>
+                                                                                        {vMarkup > 0 && (
+                                                                                            <span className="text-[11px] text-neutral-500">
+                                                                                                · En divisas: <b className="font-mono text-emerald-700">${vCashPrice.toFixed(2)}</b>
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+
+                                                                                    {vNetProfit !== null && vMarginPct !== null ? (
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="text-[11px] text-neutral-500">Tu ganancia libre:</span>
+                                                                                            <span className={`font-mono font-black text-xs ${
+                                                                                                vNetProfit < 0 ? 'text-rose-600' : 'text-emerald-600'
+                                                                                            }`}>
+                                                                                                {vNetProfit >= 0 ? `+$${vNetProfit.toFixed(2)}` : `-$${Math.abs(vNetProfit).toFixed(2)}`}
+                                                                                            </span>
+                                                                                            <span className="text-[11px] font-mono font-bold text-neutral-700">
+                                                                                                ({vMarginPct > 0 ? `${vMarginPct}%` : 'Sin margen'})
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <span className="text-[10px] text-neutral-400">
+                                                                                            Ingresa un costo para ver tu ganancia en esta talla
+                                                                                        </span>
+                                                                                    )}
                                                                                 </div>
+
+                                                                                {/* 🚨 ALERTA ROJA 1: Precio de la variante menor a su costo (Auto-ajusta también el tachado si quedara por debajo) */}
+                                                                                {vNetProfit !== null && vNetProfit < 0 && vUnitCost !== null && vSafePrice20 !== null && (
+                                                                                    <div className="p-3.5 rounded-xl bg-rose-50/90 border border-rose-200/80 space-y-2">
+                                                                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                                                                                            <div className="flex items-start gap-2 text-xs text-rose-900">
+                                                                                                <AlertTriangle size={14} className="text-rose-600 shrink-0 mt-0.5" />
+                                                                                                <p className="leading-snug">
+                                                                                                    <b>Precio menor al costo en esta variante:</b> La vendes en <b className="font-mono">${vCashPrice.toFixed(2)}</b>, pero su costo es <b className="font-mono">${vUnitCost.toFixed(2)}</b>. Pierdes <b className="font-mono">${Math.abs(vNetProfit).toFixed(2)}</b> en cada venta.{' '}
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => setOpenWhatToDoId(openWhatToDoId === lossHelpKey ? null : lossHelpKey)}
+                                                                                                        className="font-bold underline underline-offset-2 text-rose-700 hover:text-black transition-colors cursor-pointer whitespace-nowrap ml-1"
+                                                                                                    >
+                                                                                                        {openWhatToDoId === lossHelpKey ? 'Ocultar ayuda' : '¿Qué hacer?'}
+                                                                                                    </button>
+                                                                                                </p>
+                                                                                            </div>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => {
+                                                                                                    const nextListPrice = vSafePrice20 + vMarkup
+                                                                                                    const needsCompareBump = vCompareAt > 0 && vCompareAt <= nextListPrice
+                                                                                                    setVariants(prev => prev.map(item => {
+                                                                                                        if (item.id !== v.id) return item
+                                                                                                        return {
+                                                                                                            ...item,
+                                                                                                            override_usd_price: vSafePrice20,
+                                                                                                            ...(needsCompareBump ? { override_compare_at_usd: Math.ceil(nextListPrice * 1.15) } : {})
+                                                                                                        }
+                                                                                                    }))
+                                                                                                    setIsDirty(true)
+                                                                                                    setOpenWhatToDoId(null)
+                                                                                                }}
+                                                                                                className="px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-black text-white text-[10px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                                                                            >
+                                                                                                Subir precio a ${vSafePrice20.toFixed(2)}
+                                                                                            </button>
+                                                                                        </div>
+
+                                                                                        <AnimatePresence initial={false}>
+                                                                                            {openWhatToDoId === lossHelpKey && (
+                                                                                                <motion.div
+                                                                                                    initial={{ height: 0, opacity: 0 }}
+                                                                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                                                                    exit={{ height: 0, opacity: 0 }}
+                                                                                                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                                                                                                    className="overflow-hidden will-change-[height,opacity]"
+                                                                                                >
+                                                                                                    <div className="ml-5 p-2.5 rounded-lg bg-white border border-rose-200 text-[11px] text-neutral-700 leading-relaxed">
+                                                                                                        💡 <b>Solución:</b> Para no perder dinero en esta variante, sube su &quot;1. Precio Propio&quot; por encima de <b>${vUnitCost.toFixed(2)}</b> (por ejemplo a <b>${vSafePrice20.toFixed(2)}</b> para ganar un 20% libre), o revisa si escribiste mal el &quot;4. Costo Propio&quot;.
+                                                                                                    </div>
+                                                                                                </motion.div>
+                                                                                            )}
+                                                                                        </AnimatePresence>
+                                                                                    </div>
+                                                                                )}
+
+                                                                                {/* 🚨 ALERTA ROJA 2: Pérdida por descuento activo en esta variante */}
+                                                                                {vHasDiscountLoss && vUnitCost !== null && (
+                                                                                    <div className="p-3 rounded-xl bg-rose-50/90 border border-rose-200/80 flex items-start gap-2 text-xs text-rose-900">
+                                                                                        <AlertTriangle size={14} className="text-rose-600 shrink-0 mt-0.5" />
+                                                                                        <p className="leading-snug">
+                                                                                            <b>Pérdida por descuento en esta variante:</b> Al aplicar tu descuento activo (-{maxDiscOnVarPct}%), el ingreso de esta variante baja a <b className="font-mono">${vDiscountedRev.toFixed(2)}</b> y pierdes <b className="font-mono">${vDiscountLossUsd.toFixed(2)}</b> respecto a su costo (<b className="font-mono">${vUnitCost.toFixed(2)}</b>).
+                                                                                        </p>
+                                                                                    </div>
+                                                                                )}
+
+                                                                                {/* 🟠 ALERTA ÁMBAR 1: Margen Propio de la variante mayor al Precio de Venta */}
+                                                                                {hasCustomPenalty && vCashPrice > 0 && vMarkup > vCashPrice && (
+                                                                                    <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                                                                                        <div className="flex items-start gap-2 text-xs text-amber-950">
+                                                                                            <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                                                                                            <p className="leading-snug">
+                                                                                                <b>¿El Margen Propio (${vMarkup.toFixed(2)}) de esta variante es correcto?</b> Es mayor que su precio de venta (${vCashPrice.toFixed(2)}) y sube el precio en vitrina a <b className="font-mono">${vListPrice.toFixed(2)}</b>. Recuerda que este campo es en <b>dólares ($)</b>, no en Bolívares.
+                                                                                            </p>
+                                                                                        </div>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => updateVariantOverride(v.id, 'override_usd_penalty', null)}
+                                                                                            className="px-3 py-1.5 bg-white hover:bg-neutral-100 text-amber-950 border border-amber-300 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                                                                        >
+                                                                                            {math.markup > 0 ? `Usar base ($${math.markup.toFixed(2)})` : 'Quitar margen'}
+                                                                                        </button>
+                                                                                    </div>
+                                                                                )}
+
+                                                                                {/* 🟠 ALERTA ÁMBAR 2: Tachado Propio o Heredado menor o igual al Precio en Vitrina de esta variante */}
+                                                                                {vIsCompareInvalid && (
+                                                                                    <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/90 space-y-2">
+                                                                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                                                                                            <div className="flex items-start gap-2 text-xs text-amber-950">
+                                                                                                <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                                                                                                <p className="leading-snug">
+                                                                                                    <b>La oferta no se mostrará en esta variante:</b>{' '}
+                                                                                                    {hasCustomCompare
+                                                                                                        ? <>El tachado propio (<b className="font-mono">${vCompareAt.toFixed(2)}</b>) debe ser mayor al precio en vitrina de esta variante (<b className="font-mono">${vListPrice.toFixed(2)}</b>).</>
+                                                                                                        : <>Esta variante cuesta <b className="font-mono">${vListPrice.toFixed(2)}</b> en vitrina, lo que supera al Precio Tachado heredado del producto (<b className="font-mono">${vCompareAt.toFixed(2)}</b>).</>}{' '}
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => setOpenWhatToDoId(openWhatToDoId === compareHelpKey ? null : compareHelpKey)}
+                                                                                                        className="font-bold underline underline-offset-2 text-amber-800 hover:text-black transition-colors cursor-pointer whitespace-nowrap ml-1"
+                                                                                                    >
+                                                                                                        {openWhatToDoId === compareHelpKey ? 'Ocultar ayuda' : '¿Qué hacer?'}
+                                                                                                    </button>
+                                                                                                </p>
+                                                                                            </div>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => {
+                                                                                                    updateVariantOverride(v.id, 'override_compare_at_usd', vSuggestedCompareAt)
+                                                                                                    setOpenWhatToDoId(null)
+                                                                                                }}
+                                                                                                className="px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-black text-white text-[10px] font-bold whitespace-nowrap transition-all active:scale-95 shrink-0 cursor-pointer"
+                                                                                            >
+                                                                                                Ajustar a ${vSuggestedCompareAt.toFixed(2)}
+                                                                                            </button>
+                                                                                        </div>
+
+                                                                                        <AnimatePresence initial={false}>
+                                                                                            {openWhatToDoId === compareHelpKey && (
+                                                                                                <motion.div
+                                                                                                    initial={{ height: 0, opacity: 0 }}
+                                                                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                                                                    exit={{ height: 0, opacity: 0 }}
+                                                                                                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                                                                                                    className="overflow-hidden will-change-[height,opacity]"
+                                                                                                >
+                                                                                                    <div className="ml-5 p-2.5 rounded-lg bg-white border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed">
+                                                                                                        💡 <b>¿Por qué pasa esto?</b> Esta variante se muestra en vitrina a <b>${vListPrice.toFixed(2)}</b> (${vCashPrice.toFixed(2)} de venta + ${vMarkup.toFixed(2)} de margen operativo). Para mostrar una oferta en esta talla, su Tachado Propio debe superar los <b>${vListPrice.toFixed(2)}</b> (por ejemplo <b>${vSuggestedCompareAt.toFixed(2)}</b>).
+                                                                                                    </div>
+                                                                                                </motion.div>
+                                                                                            )}
+                                                                                        </AnimatePresence>
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         </div>
-
-                                                                    </div>
-
-                                                                </motion.div>
-
-                                                            )}
-
-                                                        </AnimatePresence>
-
-                                                    </div>
-
-                                                ))}
-
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    )
+                                                })}
                                             </div>
-
                                         )}
                                     </div>
                                 </div>

@@ -201,9 +201,21 @@ async function DeferredStoreContent({ store, isPreview }: { store: any, isPrevie
     ? Number((rawEur * 1000).toFixed(4)) 
     : (rawUsd > 0 && rawEur < rawUsd * 0.85 ? Number((rawUsd * 1.1193).toFixed(4)) : rawEur);
 
+// 🛡️ SANITIZACIÓN CONFIDENCIAL EN RAM (0ms CPU): Jamás serializar costos de proveedor al DOM público
+  const sanitizedProducts = (productsResponse.data || []).map((prod: any) => {
+    const { cost_usd, ...safeProduct } = prod;
+    if (Array.isArray(safeProduct.product_variants)) {
+      safeProduct.product_variants = safeProduct.product_variants.map((v: any) => {
+        const { override_cost_usd, ...safeVariant } = v;
+        return safeVariant;
+      });
+    }
+    return safeProduct;
+  });
+
   const props = {
     store: storeWithMapsKey,
-    products: productsResponse.data || [],
+    products: sanitizedProducts,
     rates: ratesResponse.data 
       ? { ...ratesResponse.data, usd_rate: rawUsd, eur_rate: safeEur } 
       : { usd_rate: 0, eur_rate: 0 },

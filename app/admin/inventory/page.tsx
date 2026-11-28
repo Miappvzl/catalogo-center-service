@@ -15,13 +15,15 @@ import { getVariantSwatchStyle } from '@/utils/ColorUtils'
 import { deleteStoreDemoProducts } from '@/app/admin/orders/action'
 import { formatUSD } from '@/utils/currency'
 
-type InventorySortOption = 'recent' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc';
-type InventoryFilterStatus = 'all' | 'active' | 'draft' | 'featured' | 'discounted' | 'campaign' | 'collection' | 'low' | 'out';
+type InventorySortOption = 'recent' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc' | 'margin_asc' | 'margin_desc';
+type InventoryFilterStatus = 'all' | 'active' | 'draft' | 'featured' | 'discounted' | 'below_cost' | 'campaign' | 'collection' | 'low' | 'out';
 
 const INVENTORY_SORT_OPTIONS: { value: InventorySortOption; label: string; shortLabel: string }[] = [
     { value: 'recent', label: 'Más recientes', shortLabel: 'Recientes' },
     { value: 'price_asc', label: 'Precio: menor a mayor', shortLabel: 'Menor precio' },
     { value: 'price_desc', label: 'Precio: mayor a menor', shortLabel: 'Mayor precio' },
+    { value: 'margin_asc', label: 'Margen: menor a mayor', shortLabel: 'Menor margen' },
+    { value: 'margin_desc', label: 'Margen: mayor a menor', shortLabel: 'Mayor margen' },
     { value: 'stock_asc', label: 'Stock: menor a mayor', shortLabel: 'Menor stock' },
     { value: 'stock_desc', label: 'Stock: mayor a menor', shortLabel: 'Mayor stock' },
 ];
@@ -67,8 +69,12 @@ interface InventoryItem {
     cashPrice: number;
     listPrice: number;
     compareAtPrice: number | null;
-    hasActiveDiscount: boolean;
+   hasActiveDiscount: boolean;
     discountLabel: string | null;
+    unitCost: number | null;
+    profitUsd: number | null;
+    marginPct: number | null;
+    isBelowCost: boolean;
     isTaxExempt: boolean;
     isFeatured: boolean;
     displayOrder: number;
@@ -352,10 +358,10 @@ export default function InventoryPage() {
                 }
 
                 // 🚀 CONSULTA PARALELA TRIPLE (0ms extra): Productos + Campañas (Banners) + Colecciones con sus ítems
-                const [productsRes, promosRes, collectionsRes] = await Promise.all([
+              const [productsRes, promosRes, collectionsRes] = await Promise.all([
                     supabase
                         .from('products')
-                        .select('id, name, image_url, category, stock, sku, status, usd_cash_price, usd_penalty, compare_at_usd, display_order, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)')
+                        .select('id, name, image_url, category, stock, sku, status, usd_cash_price, usd_penalty, compare_at_usd, cost_usd, wholesale_active, wholesale_discount_pct, display_order, is_tax_exempt, is_featured, requires_shipping, product_variants(*), product_modifier_groups(group_id)')
                         .eq('store_id', store.id)
                         .order('created_at', { ascending: false }),
                     supabase
@@ -459,13 +465,22 @@ export default function InventoryPage() {
                         (p.promo_type === 'bogo' && Number(p.bogo_buy) > 0);
                 });
 
-                const productPromoLabelMap = new Map<string, string>();
+             const productPromoLabelMap = new Map<string, string>();
+                const productPromoEffDiscountMap = new Map<string, number>();
+
                 activeDiscountPromos.forEach((p: any) => {
                     const label = p.promo_type === 'percentage'
                         ? `-${Number(p.discount_percentage)}% (${p.title})`
                         : `${p.bogo_buy}x${p.bogo_pay} (${p.title})`;
+                    const effPct = p.promo_type === 'percentage'
+                        ? Number(p.discount_percentage || 0)
+                        : (Number(p.bogo_buy) > 0 ? ((Number(p.bogo_buy) - Number(p.bogo_pay)) / Number(p.bogo_buy)) * 100 : 0);
+
                     (p.linked_products || []).forEach((pid: any) => {
-                        productPromoLabelMap.set(String(pid), label);
+                        const key = String(pid);
+                        productPromoLabelMap.set(key, label);
+                        const prevPct = productPromoEffDiscountMap.get(key) || 0;
+                        if (effPct > prevPct) productPromoEffDiscountMap.set(key, effPct);
                     });
                 });
 
@@ -480,7 +495,11 @@ export default function InventoryPage() {
                     const baseCash = Number(prod.usd_cash_price || 0)
                     const basePenalty = Number(prod.usd_penalty || 0)
                     const baseCompareAt = Number(prod.compare_at_usd || 0)
+                    const baseCost = prod.cost_usd !== null && prod.cost_usd !== undefined ? Number(prod.cost_usd) : null
                     const campaignLabel = productPromoLabelMap.get(String(prod.id)) || null
+                    const campaignEffPct = productPromoEffDiscountMap.get(String(prod.id)) || 0
+                    const wholesalePct = prod.wholesale_active ? Number(prod.wholesale_discount_pct || 0) : 0
+                    const maxActiveDiscountPct = Math.max(campaignEffPct, wholesalePct)
 
                     if (prod.product_variants && prod.product_variants.length > 0) {
                         prod.product_variants.forEach((variant: any) => {
@@ -493,12 +512,22 @@ export default function InventoryPage() {
                             const vCompareAt = variant.override_compare_at_usd !== null && variant.override_compare_at_usd !== undefined
                                 ? Number(variant.override_compare_at_usd)
                                 : baseCompareAt
+                            const vCost = variant.override_cost_usd !== null && variant.override_cost_usd !== undefined
+                                ? Number(variant.override_cost_usd)
+                                : baseCost
 
                             const vListPrice = vCash + vPenalty
                             const hasCompareDiscount = vCompareAt > vListPrice && vListPrice > 0
                             const comparePct = hasCompareDiscount ? Math.round(((vCompareAt - vListPrice) / vCompareAt) * 100) : 0
                             const hasActiveDiscount = hasCompareDiscount || Boolean(campaignLabel)
                             const discountLabel = campaignLabel || (hasCompareDiscount ? `-${comparePct}%` : null)
+
+                            const netEffectiveCash = Number((vCash * (1 - maxActiveDiscountPct / 100)).toFixed(2))
+                            const profitUsd = vCost !== null ? Number((netEffectiveCash - vCost).toFixed(2)) : null
+                            const marginPct = vCost !== null && netEffectiveCash > 0
+                                ? Number((((netEffectiveCash - vCost) / netEffectiveCash) * 100).toFixed(1))
+                                : null
+                            const isBelowCost = vCost !== null && (vCash < vCost || netEffectiveCash < vCost)
 
                             flatInventory.push({
                                 rowId: variant.id,
@@ -518,6 +547,10 @@ export default function InventoryPage() {
                                 compareAtPrice: hasCompareDiscount ? vCompareAt : null,
                                 hasActiveDiscount,
                                 discountLabel,
+                                unitCost: vCost,
+                                profitUsd,
+                                marginPct,
+                                isBelowCost,
                                 isTaxExempt: isExempt,
                                 isFeatured: isFeat,
                                 displayOrder: dOrder,
@@ -530,6 +563,13 @@ export default function InventoryPage() {
                         const comparePct = hasCompareDiscount ? Math.round(((baseCompareAt - pListPrice) / baseCompareAt) * 100) : 0
                         const hasActiveDiscount = hasCompareDiscount || Boolean(campaignLabel)
                         const discountLabel = campaignLabel || (hasCompareDiscount ? `-${comparePct}%` : null)
+
+                        const netEffectiveCash = Number((baseCash * (1 - maxActiveDiscountPct / 100)).toFixed(2))
+                        const profitUsd = baseCost !== null ? Number((netEffectiveCash - baseCost).toFixed(2)) : null
+                        const marginPct = baseCost !== null && netEffectiveCash > 0
+                            ? Number((((netEffectiveCash - baseCost) / netEffectiveCash) * 100).toFixed(1))
+                            : null
+                        const isBelowCost = baseCost !== null && (baseCash < baseCost || netEffectiveCash < baseCost)
 
                         flatInventory.push({
                             rowId: prod.id,
@@ -549,6 +589,10 @@ export default function InventoryPage() {
                             compareAtPrice: hasCompareDiscount ? baseCompareAt : null,
                             hasActiveDiscount,
                             discountLabel,
+                            unitCost: baseCost,
+                            profitUsd,
+                            marginPct,
+                            isBelowCost,
                             isTaxExempt: isExempt,
                             isFeatured: isFeat,
                             displayOrder: dOrder,
@@ -791,10 +835,11 @@ export default function InventoryPage() {
             const pidStr = String(item.productId);
             let statusMatch = true;
 
-            if (filterStatus === 'active') statusMatch = item.status === 'active';
+          if (filterStatus === 'active') statusMatch = item.status === 'active';
             else if (filterStatus === 'draft') statusMatch = item.status === 'draft';
             else if (filterStatus === 'featured') statusMatch = item.isFeatured === true;
             else if (filterStatus === 'discounted') statusMatch = item.hasActiveDiscount === true;
+            else if (filterStatus === 'below_cost') statusMatch = item.isBelowCost === true;
             else if (filterStatus === 'campaign') {
                 statusMatch = activeCampaignObj
                     ? activeCampaignObj.productIds.has(pidStr)
@@ -814,6 +859,8 @@ export default function InventoryPage() {
         return [...baseFiltered].sort((a, b) => {
             if (sortBy === 'price_asc') return a.listPrice - b.listPrice;
             if (sortBy === 'price_desc') return b.listPrice - a.listPrice;
+            if (sortBy === 'margin_asc') return (a.marginPct ?? 9999) - (b.marginPct ?? 9999);
+            if (sortBy === 'margin_desc') return (b.marginPct ?? -9999) - (a.marginPct ?? -9999);
             if (sortBy === 'stock_asc') return a.stock - b.stock;
             if (sortBy === 'stock_desc') return b.stock - a.stock;
             return 0;
@@ -826,6 +873,7 @@ export default function InventoryPage() {
         draft: items.filter(i => i.status === 'draft').length,
         featured: items.filter(i => i.isFeatured).length,
         discounted: items.filter(i => i.hasActiveDiscount).length,
+        belowCost: items.filter(i => i.isBelowCost).length,
         campaignRows: activeCampaignObj
             ? items.filter(i => activeCampaignObj.productIds.has(String(i.productId))).length
             : items.filter(i => allCampaignProductIds.has(String(i.productId))).length,
@@ -1212,11 +1260,14 @@ export default function InventoryPage() {
                                 className="flex overflow-x-auto no-scrollbar w-full gap-1 items-center"
                             >
                                 {[
-                                    { id: 'all', label: 'Todo', count: stats.total, icon: null, isModalTrigger: false },
+                                { id: 'all', label: 'Todo', count: stats.total, icon: null, isModalTrigger: false },
                                     { id: 'active', label: 'En Vitrina', count: stats.active, icon: Eye, isModalTrigger: false },
                                     { id: 'draft', label: 'Borradores', count: stats.draft, icon: EyeOff, isModalTrigger: false },
                                     { id: 'featured', label: 'Lo Más Vendido', count: stats.featured, icon: Star, isModalTrigger: false },
                                     { id: 'discounted', label: 'Con Descuento', count: stats.discounted, icon: Tag, isModalTrigger: false },
+                                    ...(stats.belowCost > 0
+                                        ? [{ id: 'below_cost', label: 'Bajo Costo', count: stats.belowCost, icon: AlertTriangle, isModalTrigger: false }]
+                                        : []),
                                     {
                                         id: 'campaign',
                                         label: filterStatus === 'campaign'
@@ -1505,6 +1556,28 @@ export default function InventoryPage() {
                                                                             <span className="inline-flex items-center gap-1 font-mono text-[8.5px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-1.5 py-0.5 rounded leading-none">
                                                                                 <Tag size={8.5} /> {item.discountLabel}
                                                                             </span>
+                                                                        )}
+
+                                                                        {item.unitCost !== null && (
+                                                                            item.isBelowCost ? (
+                                                                                <span
+                                                                                    title={`Costo guardado: ${formatUSD(item.unitCost)} | Pérdida: ${formatUSD(item.profitUsd || 0)}`}
+                                                                                    className="inline-flex items-center gap-1 font-mono text-[8.5px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200/80 px-1.5 py-0.5 rounded leading-none"
+                                                                                >
+                                                                                    <AlertTriangle size={8.5} /> Bajo Costo ({formatUSD(item.profitUsd || 0)})
+                                                                                </span>
+                                                                            ) : item.marginPct !== null ? (
+                                                                                <span
+                                                                                    title={`Costo: ${formatUSD(item.unitCost)} | Ganancia Neta (Sin IVA): +${formatUSD(item.profitUsd || 0)}`}
+                                                                                    className={`inline-flex items-center font-mono text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border leading-none ${
+                                                                                        item.marginPct < 10
+                                                                                            ? 'bg-amber-50 text-amber-800 border-amber-200/70'
+                                                                                            : 'bg-neutral-100/80 text-neutral-600 border-neutral-200/60'
+                                                                                    }`}
+                                                                                >
+                                                                                    Margen {item.marginPct}%
+                                                                                </span>
+                                                                            ) : null
                                                                         )}
 
                                                                         {item.category && (

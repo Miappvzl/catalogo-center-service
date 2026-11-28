@@ -20,10 +20,9 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     redirect('/login')
   }
 
-  // 4. Consultas en paralelo protegidas
-const [configRes, storeRes] = await Promise.all([
+  const [configRes, storeRes] = await Promise.all([
     supabase.from('app_config').select('usd_rate, eur_rate').eq('id', 1).single(),
-    supabase.from('stores').select('id, currency_type, fiscal_profile, store_type').eq('user_id', user.id).single()
+    supabase.from('stores').select('id, currency_type, fiscal_profile, store_type, default_tax_active, default_tax_percentage, show_tax_in_catalog, wholesale_config, affiliate_config').eq('user_id', user.id).single()
 ])
 
   // Si el usuario no tiene tienda vinculada, no lo dejamos pasar al editor
@@ -38,12 +37,17 @@ const [configRes, storeRes] = await Promise.all([
         usd: configRes.data?.usd_rate || 0, 
         eur: configRes.data?.eur_rate || 0 
       }}
-    storeSettings={{
+      storeSettings={{
         id: storeRes.data?.id || '',
         currency: storeRes.data?.currency_type || 'usd',
         fiscalProfile: storeRes.data?.fiscal_profile || 'informal',
-        storeType: storeRes.data?.store_type || 'retail' // 🚀 INYECCIÓN CRÍTICA
-    }}
-/>
+        storeType: storeRes.data?.store_type || 'retail',
+        defaultTaxActive: storeRes.data?.default_tax_active ?? false,
+        defaultTaxPercentage: Number(storeRes.data?.default_tax_percentage ?? 16),
+        showTaxInCatalog: storeRes.data?.show_tax_in_catalog ?? false,
+        wholesaleConfig: storeRes.data?.wholesale_config || null,
+        affiliateConfig: storeRes.data?.affiliate_config || null,
+      }}
+    />
   )
 }
